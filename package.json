@@ -1,5 +1,5 @@
 {
-  "name": "cyberguard",
+  "name": "scanner_frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,25 +9,21 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@fontsource/inter": "^5.2.8",
-    "@fontsource/noto-sans": "^5.2.10",
-    "@heroicons/react": "^2.2.0",
-    "axios": "^1.13.2",
-    "link": "^2.1.1",
-    "lucide-react": "^0.562.0",
-    "material-symbols": "^0.40.2",
-    "mongoose": "^9.0.2",
-    "next": "16.0.10",
-    "path": "^0.12.7",
-    "react": "19.2.1",
-    "react-dom": "19.2.1",
-    "recharts": "^3.6.0"
+    "framer-motion": "^12.35.2",
+    "gsap": "^3.14.2",
+    "lucide-react": "^0.577.0",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "babel-plugin-react-compiler": "1.0.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.0.10",
-    "tailwindcss": "^4"
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
