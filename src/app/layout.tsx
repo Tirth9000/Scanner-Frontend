@@ -5,8 +5,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'SecurityScorecard - Dashboard',
-  description: 'Real-time threat monitoring and risk analysis',
+  title: 'iSecurify - Advanced Security Dashboard',
+  description: 'Real-time threat monitoring and professional risk analysis by iSecurify',
 };
 
 export default function RootLayout({

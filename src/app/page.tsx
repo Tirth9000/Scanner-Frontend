@@ -53,56 +53,12 @@ export default function SecurityDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#fcfcfc] text-slate-800 font-sans" ref={mainRef}>
-      
-      {/* Top Navigation Bar */}
-      <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-[#3b2a8d] rounded flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-lg tracking-tight text-slate-900">SecurityScorecard</span>
-          </div>
-          <button className="bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors shadow-sm">
-            Upgrade today
-          </button>
+
+      <div className="w-full bg-white border-b border-gray-100 py-4 px-8">
+        <div className="flex items-center">
+          <img src="/logo_isecurify.svg" alt="iSecurify Logo" className="h-10 w-auto" />
         </div>
-
-        <div className="flex-1 max-w-2xl mx-8">
-          <div className="relative flex items-center">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <span className="text-gray-500 text-sm font-medium border-r pr-2 border-gray-300">All <ChevronDown className="inline w-4 h-4" /></span>
-            </div>
-            <div className="absolute inset-y-0 left-20 flex items-center pl-3 pointer-events-none">
-              <Search className="w-4 h-4 text-gray-400" />
-            </div>
-            <input 
-              type="text" 
-              className="w-full pl-32 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#3b2a8d] focus:border-transparent transition-all"
-              placeholder="Search companies, scorecards, portfolios and tags..."
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-4 text-gray-500">
-          <button className="hover:text-gray-700 transition-colors"><Settings className="w-5 h-5" /></button>
-          <button className="hover:text-gray-700 transition-colors"><Bell className="w-5 h-5" /></button>
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow-sm ring-2 ring-gray-100 cursor-pointer">
-            RJ
-          </div>
-        </div>
-      </header>
-
-      {/* Sub Navigation */}
-      <nav className="flex items-center space-x-1 px-6 py-2 bg-white border-b border-gray-200 text-sm font-medium text-gray-600 overflow-x-auto">
-        <a href="#" className="px-3 py-2 hover:text-[#3b2a8d] transition-colors flex items-center">Home <ChevronDown className="w-4 h-4 ml-1 opacity-50" /></a>
-        <a href="#" className="px-3 py-2 text-[#3b2a8d] border-b-2 border-[#3b2a8d] flex items-center">My Organization <ChevronDown className="w-4 h-4 ml-1 opacity-50" /></a>
-        <a href="#" className="px-3 py-2 hover:text-[#3b2a8d] transition-colors flex items-center">Companies <ChevronDown className="w-4 h-4 ml-1 opacity-50" /></a>
-        <a href="#" className="px-3 py-2 hover:text-[#3b2a8d] transition-colors flex items-center">Communication <ChevronDown className="w-4 h-4 ml-1 opacity-50" /></a>
-        <a href="#" className="px-3 py-2 hover:text-[#3b2a8d] transition-colors flex items-center">Automation <ChevronDown className="w-4 h-4 ml-1 opacity-50" /></a>
-        <a href="#" className="px-3 py-2 hover:text-[#3b2a8d] transition-colors flex items-center">Threat Intelligence <ChevronDown className="w-4 h-4 ml-1 opacity-50" /></a>
-      </nav>
-
+      </div>
       <div className="flex-1 w-full max-w-[1400px] mx-auto px-6 py-6 flex flex-col gap-6">
         
         {/* Company Header Card */}
