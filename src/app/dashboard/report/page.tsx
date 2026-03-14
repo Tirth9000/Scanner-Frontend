@@ -367,6 +367,7 @@ export default function SecurityReport() {
           {/* Vertical Factor Sidebar */}
           <div className="lg:col-span-3 bg-slate-50/50 border-r border-slate-50 p-6 space-y-2 overflow-y-auto">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 px-2">Security Factors</p>
+
             {securityFactors.map((factor) => (
               <motion.button
                 key={factor.id}
@@ -375,66 +376,70 @@ export default function SecurityReport() {
                     setActiveIssueCategory('All');
                     setSelectedIssue(null);
                 }}
-                whileHover={{ x: 2, backgroundColor: 'rgba(255, 255, 255, 0.8)' }}
-                whileTap={{ scale: 0.99 }}
-                className={`w-full group relative flex items-center justify-between p-4 rounded-xl transition-all duration-300 ${
-                  activeFactor === factor.id 
-                    ? 'bg-slate-900 border-slate-800 shadow-2xl shadow-slate-900/10' 
-                    : 'bg-white/40 border-slate-100/60 hover:border-slate-200'
-                } border mb-2 overflow-hidden`}
+                whileHover={activeFactor === factor.id ? { x: 2 } : { x: 2, backgroundColor: 'rgba(255, 255, 255, 0.95)' }}
+                animate={{ 
+                  backgroundColor: activeFactor === factor.id ? '#0f172a' : 'rgba(255, 255, 255, 1)',
+                  borderColor: activeFactor === factor.id ? '#1e293b' : '#f1f5f9',
+                  x: activeFactor === factor.id ? 4 : 0
+                }}
+                whileHover={{ x: 6 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full relative flex items-center justify-between p-4 rounded-xl border mb-2 overflow-hidden shadow-sm"
               >
                 {/* Precise Active Indicator */}
-                {activeFactor === factor.id && (
-                  <motion.div 
-                    layoutId="active-factor-indicator"
-                    className="absolute left-0 top-1 bottom-1 w-0.5 bg-blue-500 rounded-full"
-                  />
-                )}
+                <AnimatePresence>
+                  {activeFactor === factor.id && (
+                    <motion.div 
+                      layoutId="active-indicator"
+                      initial={{ opacity: 0, scaleY: 0 }}
+                      animate={{ opacity: 1, scaleY: 1 }}
+                      exit={{ opacity: 0, scaleY: 0 }}
+                      className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-500 z-10"
+                    />
+                  )}
+                </AnimatePresence>
 
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3 relative z-20">
                   <div className={`p-2 rounded-lg transition-all duration-300 ${
-                    activeFactor === factor.id ? 'bg-slate-800 text-blue-400 shadow-inner' : 'bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500'
+                    activeFactor === factor.id ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400'
                   }`}>
                     {factor.icon}
                   </div>
                   <div className="text-left">
-                    <span className={`block text-[11px] font-black tracking-tight transition-colors duration-300 ${
-                      activeFactor === factor.id ? 'text-white' : 'text-slate-700 group-hover:text-slate-950'
-                    }`}>
+                    <motion.span 
+                      animate={{ color: activeFactor === factor.id ? '#ffffff' : '#0f172a' }}
+                      className="block text-[11px] font-black tracking-tight"
+                    >
                       {factor.id}
-                    </span>
-                    <span className={`text-[8px] font-black uppercase tracking-[0.15em] transition-colors duration-300 ${
-                      activeFactor === factor.id ? 'text-slate-500' : 'text-slate-400'
-                    }`}>
+                    </motion.span>
+                    <motion.span 
+                      animate={{ color: activeFactor === factor.id ? 'rgba(96, 165, 250, 0.8)' : '#94a3b8' }}
+                      className="text-[8.5px] font-black uppercase tracking-[0.1em]"
+                    >
                       Network Asset
-                    </span>
+                    </motion.span>
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-1.5">
+                <div className="flex flex-col items-end gap-1.5 relative z-20">
                   <div className="flex items-center space-x-1">
-                    <span className={`text-[12px] font-black transition-colors duration-300 ${
-                      activeFactor === factor.id ? 'text-blue-300' : 'text-slate-700 group-hover:text-blue-600'
-                    }`}>
+                    <motion.span 
+                      animate={{ color: activeFactor === factor.id ? '#93c5fd' : '#0f172a' }}
+                      className="text-[12px] font-black"
+                    >
                       {factor.score}
-                    </span>
-                    <span className={`text-[8px] font-bold opacity-40 transition-colors duration-300 ${
-                      activeFactor === factor.id ? 'text-slate-400' : 'text-slate-500'
-                    }`}>
+                    </motion.span>
+                    <span className={`text-[8px] font-bold ${activeFactor === factor.id ? 'text-slate-500' : 'text-slate-400'}`}>
                       /100
                     </span>
                   </div>
                   
                   {factor.count > 0 && (
-                    <motion.span 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className={`text-[8px] font-black px-1.5 py-0.5 rounded transition-colors duration-300 ${
-                        activeFactor === factor.id ? 'bg-blue-500/20 text-blue-400' : 'bg-red-50 text-red-500 group-hover:bg-red-500 group-hover:text-white'
-                      }`}
-                    >
+                    <div className={`text-[8px] font-black px-1.5 py-0.5 rounded ${
+                      activeFactor === factor.id ? 'bg-blue-500/20 text-blue-400' : 'bg-red-50 text-red-500'
+                    }`}>
                       {factor.count} Vulnerabilities
-                    </motion.span>
+                    </div>
                   )}
                 </div>
               </motion.button>
