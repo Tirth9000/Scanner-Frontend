@@ -5,14 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 import {
-  MoreHorizontal,
-  Plus,
-  ArrowUpRight,
-  UploadCloud,
   ShieldCheck,
   AlertCircle,
   Clock,
-  ExternalLink,
   ChevronRight,
   ArrowLeft,
   Globe,
@@ -27,185 +22,223 @@ import {
   Users
 } from 'lucide-react';
 
-const securityFactors = [
-  { id: 'Network Security', count: 4, score: 81, icon: <Globe size={14} />, color: 'slate-600' },
-  { id: 'Application', count: 2, score: 94, icon: <Shield size={14} />, color: 'slate-500' },
-  { id: 'DNS Health', count: 3, score: 100, icon: <Zap size={14} />, color: 'slate-600' },
-  { id: 'Patching', count: 5, score: 87, icon: <Activity size={14} />, color: 'slate-500' },
-  { id: 'Endpoints', count: 1, score: 72, icon: <Bug size={14} />, color: 'slate-400' },
-  { id: 'IP Reputation', count: 0, score: 98, icon: <Search size={14} />, color: 'slate-500' },
-  { id: 'Cubit Score', count: 2, score: 85, icon: <ShieldCheck size={14} />, color: 'slate-600' },
-  { id: 'Hacker Chatter', count: 0, score: 100, icon: <MessageSquare size={14} />, color: 'slate-400' },
-  { id: 'Information Leak', count: 3, score: 91, icon: <Database size={14} />, color: 'slate-500' },
-  { id: 'Social Eng.', count: 1, score: 78, icon: <Users size={14} />, color: 'slate-400' }
+// ─── Real scan data from score2.json + data2.json ────────────────────────────
+
+const DOMAIN_SCORE = 73;
+
+const SUBDOMAINS = [
+  { subdomain: 'facilis.officebeacon.com',      score: 75, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
+  { subdomain: 'southafrica.officebeacon.com',  score: 75, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
+  { subdomain: 'ambassador.officebeacon.com',   score: 77, issues: ['Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
+  { subdomain: 'mail.officebeacon.com',         score: 45, issues: ['Missing NS record','Missing TXT record','Missing MX record','HTTP without HTTPS','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','443 open without TLS'] },
+  { subdomain: 'book.officebeacon.com',         score: 75, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
+  { subdomain: 'events.officebeacon.com',       score: 75, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
+  { subdomain: 'go.officebeacon.com',           score: 77, issues: ['Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
+  { subdomain: 'webmail.officebeacon.com',      score: 77, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Unexpected open port 143'] },
+  { subdomain: 'insurance.officebeacon.com',    score: 77, issues: ['Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
+  { subdomain: 'www.officebeacon.com',          score: 75, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
+  { subdomain: 'careers.officebeacon.com',      score: 85, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options'] },
 ];
+
+// Derived exposure counts by category
+const CATEGORIZED = {
+  'DNS Health': {
+    'Missing NS record':  ['facilis','southafrica','mail','book','events','webmail','www','careers'].map(s => s + '.officebeacon.com'),
+    'Missing TXT record': SUBDOMAINS.map(s => s.subdomain),
+    'Missing MX record':  SUBDOMAINS.map(s => s.subdomain),
+  },
+  'Application Security': {
+    'Missing CSP header':              SUBDOMAINS.map(s => s.subdomain),
+    'Missing HSTS header':             SUBDOMAINS.map(s => s.subdomain),
+    'Missing X-Frame-Options':         SUBDOMAINS.map(s => s.subdomain),
+    'Missing X-Content-Type-Options':  SUBDOMAINS.map(s => s.subdomain),
+    'HTTP without HTTPS':              ['mail.officebeacon.com'],
+  },
+  'Network Security': {
+    'Risky port exposed':    ['facilis','southafrica','ambassador','book','events','go','insurance','www'].map(s => s + '.officebeacon.com'),
+    'Unexpected open port':  ['webmail.officebeacon.com'],
+  },
+  'TLS Security': {
+    '443 open without TLS': ['mail.officebeacon.com'],
+  },
+};
+
+// ─── Security factor cards (left sidebar) ────────────────────────────────────
+// Scores derived from actual findings:
+//  - Application Security: all 11 subdomains missing 4 headers + 1 HTTP issue → avg penalty ~31 → score ~69
+//  - DNS Health: widespread NS/TXT/MX gaps → avg penalty ~4 → score ~96 
+//  - Network Security: 8 risky ports + 1 unexpected → score ~77
+//  - TLS Security: 1 critical (mail) out of 11 → score ~98 (low spread)
+//  - Others: no data in scan, kept as placeholder
+
+const securityFactors = [
+  { id: 'Network Security',    count: 9,  score: 77,  icon: <Globe size={14} />,       color: 'slate-600' },
+  { id: 'Application Security',count: 11, score: 69,  icon: <Shield size={14} />,      color: 'slate-500' },
+  { id: 'DNS Health',          count: 11, score: 96,  icon: <Zap size={14} />,         color: 'slate-600' },
+  { id: 'TLS Security',        count: 1,  score: 98,  icon: <Lock size={14} />,        color: 'slate-400' },
+  { id: 'Patching',            count: 0,  score: 100, icon: <Activity size={14} />,    color: 'slate-500' },
+  { id: 'IP Reputation',       count: 0,  score: 100, icon: <Search size={14} />,      color: 'slate-500' },
+  { id: 'Cubit Score',         count: 0,  score: 100, icon: <ShieldCheck size={14} />, color: 'slate-600' },
+  { id: 'Hacker Chatter',      count: 0,  score: 100, icon: <MessageSquare size={14} />,color: 'slate-400' },
+  { id: 'Information Leak',    count: 0,  score: 100, icon: <Database size={14} />,    color: 'slate-500' },
+  { id: 'Social Eng.',         count: 0,  score: 100, icon: <Users size={14} />,       color: 'slate-400' },
+];
+
+// ─── Issues per factor (derived directly from score2.json) ───────────────────
 
 const issuesData: Record<string, any[]> = {
   'Network Security': [
-    { 
-      id: 1, 
-      title: 'Exposed SSH Port', 
-      severity: 'Critical', 
-      category: 'Ports', 
-      desc: 'Port 22 (SSH) is open to the public internet. SSH is a common target for brute-force attacks and vulnerability exploitation, which can lead to full server compromise if not properly secured.', 
-      remediation: 'Restrict access to port 22 (SSH) to trusted IP addresses only, or place it behind a VPN or firewall.',
-      breachRisk: 'Critical',
-      impact: 9.5,
-      findings: [
-        { status: 'Open', target: 'officebeacon.com', port: '22', cvss: '9.8', observation: 'Mar 14, 2026' }
-      ]
-    },
-    { 
-      id: 2, 
-      title: 'Insecure SSL Version', 
-      severity: 'High', 
-      category: 'SSL/TLS', 
-      desc: 'The server supports TLS 1.0/1.1 which are deprecated and vulnerable to man-in-the-middle attacks such as BEAST and POODLE.',
-      remediation: 'Disable TLS 1.0 and 1.1 on the server and ensure only TLS 1.2 and 1.3 are enabled.',
+    {
+      id: 1,
+      title: 'Risky Port 8080 Exposed',
+      severity: 'High',
+      category: 'Open Ports',
+      desc: 'Port 8080 is open on 8 subdomains. This is a well-known alternative HTTP port frequently targeted by scanners and automated attack tools. Exposing it unnecessarily increases the attack surface.',
+      remediation: 'Close port 8080 on all affected hosts or restrict access via firewall rules to trusted IPs only.',
       breachRisk: 'High',
-      impact: 7.5,
+      impact: 10,
       findings: [
-        { status: 'Open', target: 'officebeacon.com', port: '443', cvss: '7.5', observation: 'Mar 14, 2026' }
+        { status: 'Open', target: 'facilis.officebeacon.com',     port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
+        { status: 'Open', target: 'southafrica.officebeacon.com', port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
+        { status: 'Open', target: 'ambassador.officebeacon.com',  port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
+        { status: 'Open', target: 'book.officebeacon.com',        port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
+        { status: 'Open', target: 'events.officebeacon.com',      port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
+        { status: 'Open', target: 'go.officebeacon.com',          port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
+        { status: 'Open', target: 'insurance.officebeacon.com',   port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
+        { status: 'Open', target: 'www.officebeacon.com',         port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
       ]
     },
-    { 
-      id: 3, 
-      title: 'Missing WAF', 
-      severity: 'Medium', 
-      category: 'Firewall', 
-      desc: 'No Web Application Firewall (WAF) was detected. WAFs are essential for protecting against common web attacks like SQL injection and Cross-Site Scripting.',
-      remediation: 'Deploy a cloud-based or on-premise WAF to inspect and filter incoming web traffic.',
+    {
+      id: 2,
+      title: 'Unexpected Port 143 (IMAP) Open',
+      severity: 'Medium',
+      category: 'Open Ports',
+      desc: 'Port 143 (unencrypted IMAP) is open on webmail.officebeacon.com. This port was not expected and transmits email credentials in plain text, making it susceptible to eavesdropping.',
+      remediation: 'Disable plain IMAP (port 143) and only allow IMAPS (port 993). Enforce TLS for all mail traffic.',
       breachRisk: 'Medium',
-      impact: 5.0,
+      impact: 8,
       findings: [
-        { status: 'Open', target: 'officebeacon.com', port: '80/443', cvss: '5.0', observation: 'Mar 14, 2026' }
+        { status: 'Open', target: 'webmail.officebeacon.com', port: '143', cvss: '6.5', observation: 'Mar 15, 2026' },
       ]
     },
-    { 
-      id: 4, 
-      title: 'Unencrypted HTTP', 
-      severity: 'Low', 
-      category: 'Encryption', 
-      desc: 'The website is accessible via unencrypted HTTP (Port 80). Traffic sent over HTTP can be intercepted and read by attackers.',
-      remediation: 'Configure a permanent redirect from HTTP to HTTPS and enable HSTS.',
-      breachRisk: 'Low',
-      impact: 4.0,
-      findings: [
-        { status: 'Open', target: 'officebeacon.com', port: '80', cvss: '4.3', observation: 'Mar 14, 2026' }
-      ]
-    }
   ],
-  'Application': [
-    { 
-      id: 5, 
-      title: 'Cross-Site Scripting (XSS)', 
-      severity: 'High', 
-      category: 'Injection', 
-      desc: 'A reflected XSS vulnerability exists on the search parameter, allowing attackers to execute arbitrary scripts in a user\'s browser.',
-      remediation: 'Implement proper output encoding and input validation for all user-supplied data.',
-      breachRisk: 'High',
-      impact: 8.0,
-      findings: [
-        { status: 'Open', target: 'app.officebeacon.com', port: '443', cvss: '8.2', observation: 'Mar 14, 2026' }
-      ]
-    },
-    { 
-      id: 6, 
-      title: 'Outdated Framework', 
-      severity: 'Medium', 
-      category: 'Dependencies', 
-      desc: 'The application is using an outdated version of React (v17.2) which has known security vulnerabilities that are fixed in later versions.',
-      remediation: 'Upgrade the application to use the latest stable version of React and related dependencies.',
-      breachRisk: 'Medium',
-      impact: 5.5,
-      findings: [
-        { status: 'Open', target: 'app.officebeacon.com', port: 'N/A', cvss: '6.1', observation: 'Mar 14, 2026' }
-      ]
-    }
-  ],
-  'Information Leak': [
-    { 
-      id: 7, 
-      title: 'Source Maps Exposed', 
-      severity: 'Medium', 
-      category: 'Code Exposure', 
-      desc: 'Production source maps are accessible. This can assist attackers in reverse-engineering your frontend application logic.',
-      remediation: 'Configure your build process to not deploy .map files to production servers.',
-      breachRisk: 'Medium',
-      impact: 4.5,
-      findings: [
-        { status: 'Open', target: 'static.officebeacon.com', port: '443', cvss: '4.8', observation: 'Mar 14, 2026' }
-      ]
-    },
-    { 
-      id: 8, 
-      title: 'Verbose Error Headers', 
-      severity: 'Low', 
-      category: 'Headers', 
-      desc: 'The server returns descriptive error headers that reveal internal software versions and configuration details.',
-      remediation: 'Configure the server to return generic error messages and remove identifying headers like X-Powered-By.',
-      breachRisk: 'Low',
-      impact: 3.0,
-      findings: [
-        { status: 'Open', target: 'officebeacon.com', port: '443', cvss: '3.2', observation: 'Mar 14, 2026' }
-      ]
-    },
-    { 
-      id: 9, 
-      title: 'Public Git Folder', 
-      severity: 'Critical', 
-      category: 'Code Exposure', 
-      desc: 'A public .git directory was found in the website root, potentially exposing your entire source code history and internal configurations.',
-      remediation: 'Immediately remove the .git folder from the production server and restrict access to dot-files.',
+
+  'Application Security': [
+    {
+      id: 3,
+      title: 'HTTP Served Without HTTPS',
+      severity: 'Critical',
+      category: 'Encryption',
+      desc: 'mail.officebeacon.com is being served over unencrypted HTTP with no HTTPS redirect. All traffic — including credentials and session tokens — is transmitted in plain text.',
+      remediation: 'Configure a permanent 301 redirect from HTTP to HTTPS and enable HSTS on mail.officebeacon.com.',
       breachRisk: 'Critical',
-      impact: 10.0,
+      impact: 20,
       findings: [
-        { status: 'Open', target: 'officebeacon.com', port: '443', cvss: '10.0', observation: 'Mar 14, 2026' }
+        { status: 'Open', target: 'mail.officebeacon.com', port: '80', cvss: '9.1', observation: 'Mar 15, 2026' },
       ]
-    }
+    },
+    {
+      id: 4,
+      title: 'Missing Content Security Policy (CSP)',
+      severity: 'High',
+      category: 'Security Headers',
+      desc: 'The Content-Security-Policy header is absent on all 11 scanned subdomains. Without CSP, browsers cannot restrict which resources may be loaded, enabling XSS and data injection attacks.',
+      remediation: 'Add a Content-Security-Policy header via your web server or CDN (e.g. Cloudflare) configuration. A restrictive policy like default-src \'self\' should be the baseline.',
+      breachRisk: 'High',
+      impact: 3,
+      findings: SUBDOMAINS.map((s, i) => ({ status: 'Open', target: s.subdomain, port: '443', cvss: '6.1', observation: 'Mar 15, 2026' }))
+    },
+    {
+      id: 5,
+      title: 'Missing HSTS Header',
+      severity: 'High',
+      category: 'Security Headers',
+      desc: 'Strict-Transport-Security is missing on all 11 subdomains despite TLS being present. Without HSTS, browsers may allow downgrade attacks, stripping HTTPS to HTTP.',
+      remediation: 'Set Strict-Transport-Security: max-age=31536000; includeSubDomains on your server or Cloudflare settings.',
+      breachRisk: 'High',
+      impact: 4,
+      findings: SUBDOMAINS.map(s => ({ status: 'Open', target: s.subdomain, port: '443', cvss: '6.5', observation: 'Mar 15, 2026' }))
+    },
+    {
+      id: 6,
+      title: 'Missing X-Frame-Options',
+      severity: 'Medium',
+      category: 'Security Headers',
+      desc: 'The X-Frame-Options header is absent on all subdomains, leaving them vulnerable to clickjacking attacks where a malicious page embeds your site in an invisible iframe.',
+      remediation: 'Add X-Frame-Options: SAMEORIGIN (or DENY) to all HTTP responses across all subdomains.',
+      breachRisk: 'Medium',
+      impact: 2,
+      findings: SUBDOMAINS.map(s => ({ status: 'Open', target: s.subdomain, port: '443', cvss: '5.4', observation: 'Mar 15, 2026' }))
+    },
+    {
+      id: 7,
+      title: 'Missing X-Content-Type-Options',
+      severity: 'Medium',
+      category: 'Security Headers',
+      desc: 'X-Content-Type-Options: nosniff is missing on all 11 subdomains. Without it, browsers may perform MIME-type sniffing, which can allow certain injection attacks via script execution.',
+      remediation: 'Add X-Content-Type-Options: nosniff globally via reverse proxy, CDN rules, or framework middleware.',
+      breachRisk: 'Medium',
+      impact: 2,
+      findings: SUBDOMAINS.map(s => ({ status: 'Open', target: s.subdomain, port: '443', cvss: '4.3', observation: 'Mar 15, 2026' }))
+    },
   ],
+
   'DNS Health': [
-    { 
-      id: 10, 
-      title: 'Missing DMARC', 
-      severity: 'High', 
-      category: 'Email Security', 
-      desc: 'No DMARC record was found for the domain. DMARC helps prevent email spoofing and phishing by specifying how to handle failed SPF/DKIM checks.',
-      remediation: 'Publish a DMARC policy (TXT record) at _dmarc.officebeacon.com.',
+    {
+      id: 8,
+      title: 'Missing NS Records',
+      severity: 'High',
+      category: 'DNS Config',
+      desc: 'NS (Name Server) records are missing on 8 out of 11 subdomains. This can cause DNS resolution failures and indicates subdomains may not have proper authoritative delegation, which can allow subdomain takeover.',
+      remediation: 'Review DNS zone configuration and ensure each subdomain has valid NS records pointing to authoritative servers. Verify with your registrar (ns09.domaincontrol.com found on some).',
       breachRisk: 'High',
-      impact: 7.0,
-      findings: [
-        { status: 'Open', target: 'officebeacon.com', port: 'DNS', cvss: '7.1', observation: 'Mar 14, 2026' }
-      ]
+      impact: 2,
+      findings: ['facilis','southafrica','mail','book','events','webmail','www','careers'].map(s => ({
+        status: 'Open', target: s + '.officebeacon.com', port: 'DNS', cvss: '6.8', observation: 'Mar 15, 2026'
+      }))
     },
-    { 
-      id: 11, 
-      title: 'Incomplete SPF', 
-      severity: 'Medium', 
-      category: 'Email Security', 
-      desc: 'The SPF record contains "all" instead of "-all", which means it only provides soft-fail and doesn\'t strictly block unauthorized senders.',
-      remediation: 'Update the SPF record to end with "-all" to strictly enforce authorized sending IPs.',
+    {
+      id: 9,
+      title: 'Missing TXT Records (SPF/DMARC)',
+      severity: 'High',
+      category: 'Email Security',
+      desc: 'TXT records are absent on all 11 subdomains. This means no SPF or DMARC policies are in place, leaving the domain open to email spoofing and phishing attacks using your brand.',
+      remediation: 'Publish SPF TXT record: v=spf1 include:_spf.hubspot.com -all. Add DMARC policy at _dmarc.officebeacon.com: v=DMARC1; p=quarantine; rua=mailto:dmarc@officebeacon.com.',
+      breachRisk: 'High',
+      impact: 1,
+      findings: SUBDOMAINS.map(s => ({ status: 'Open', target: s.subdomain, port: 'DNS', cvss: '7.1', observation: 'Mar 15, 2026' }))
+    },
+    {
+      id: 10,
+      title: 'Missing MX Records',
+      severity: 'Medium',
+      category: 'Email Security',
+      desc: 'MX records are absent on all 11 subdomains. While mail delivery to subdomains may not be intended, missing MX records can be a sign of incomplete DNS configuration and hinders email authentication enforcement.',
+      remediation: 'If mail is not intended for these subdomains, publish a null MX record (v=spf1 -all) to explicitly indicate this and prevent abuse.',
       breachRisk: 'Medium',
-      impact: 5.0,
+      impact: 1,
+      findings: SUBDOMAINS.map(s => ({ status: 'Open', target: s.subdomain, port: 'DNS', cvss: '5.0', observation: 'Mar 15, 2026' }))
+    },
+  ],
+
+  'TLS Security': [
+    {
+      id: 11,
+      title: 'Port 443 Open Without Active TLS',
+      severity: 'Critical',
+      category: 'TLS Config',
+      desc: 'mail.officebeacon.com has port 443 open but TLS is not active. Combined with HTTP being served without HTTPS, all mail-related traffic is fully exposed to interception. This is the most critical finding in this scan.',
+      remediation: 'Immediately provision a TLS certificate for mail.officebeacon.com (Let\'s Encrypt is free) and configure the mail server to terminate TLS on port 443. Also force HTTPS redirect on port 80.',
+      breachRisk: 'Critical',
+      impact: 20,
       findings: [
-        { status: 'Open', target: 'officebeacon.com', port: 'DNS', cvss: '5.2', observation: 'Mar 14, 2026' }
+        { status: 'Open', target: 'mail.officebeacon.com', port: '443', cvss: '9.8', observation: 'Mar 15, 2026' },
       ]
     },
-    { 
-      id: 12, 
-      title: 'DNSSEC Disabled', 
-      severity: 'Low', 
-      category: 'DNS Config', 
-      desc: 'DNSSEC is not enabled for the domain. DNSSEC adds a layer of security to the DNS process by digitally signing data to verify its origin.',
-      remediation: 'Enable DNSSEC at your domain registrar and publish the DS records.',
-      breachRisk: 'Low',
-      impact: 3.5,
-      findings: [
-        { status: 'Open', target: 'officebeacon.com', port: 'DNS', cvss: '3.5', observation: 'Mar 14, 2026' }
-      ]
-    }
-  ]
+  ],
 };
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SecurityReport() {
   const searchParams = useSearchParams();
@@ -213,54 +246,54 @@ export default function SecurityReport() {
   const [activeFactor, setActiveFactor] = useState('Network Security');
   const [activeIssueCategory, setActiveIssueCategory] = useState('All');
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
-  const [globalScore, setGlobalScore] = useState(86);
+  const [globalScore, setGlobalScore] = useState(DOMAIN_SCORE);
   const [isFixing, setIsFixing] = useState<number | null>(null);
   const [fixedIssues, setFixedIssues] = useState<number[]>([]);
   const mainRef = useRef<HTMLDivElement>(null);
 
+  // Counts for the threat intelligence panel
+  const totalVulns = securityFactors.reduce((sum, f) => sum + f.count, 0);
+  const criticalCount = Object.values(issuesData).flat().filter(i => i.severity === 'Critical').length;
+  const highCount = Object.values(issuesData).flat().filter(i => i.severity === 'High').length;
+
   const handleFix = (issueId: number) => {
     setIsFixing(issueId);
-    // Simulate a re-scan/fix duration
     setTimeout(() => {
       setFixedIssues(prev => [...prev, issueId]);
       setIsFixing(null);
-      setGlobalScore(prev => Math.min(100, prev + 1.2));
-      // In a real app, we'd also update the factor score here
+      setGlobalScore(prev => Math.min(100, prev + 2));
     }, 2000);
   };
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo('.score-counter', { innerHTML: 0 }, { 
-          innerHTML: 86,
-          duration: 2,
-          snap: { innerHTML: 1 },
-          ease: "power2.out",
-      });
-      gsap.fromTo('.gauge-needle', { rotation: -90, transformOrigin: "bottom center" }, { 
-        rotation: -45, duration: 1.5, ease: "back.out(1.7)", delay: 0.5 
-      });
-      gsap.fromTo('.factor-bar', { scaleX: 0, transformOrigin: "left center" }, { 
-        scaleX: 1, duration: 1.2, stagger: 0.1, ease: "power2.out", delay: 0.8 
-      });
+      gsap.fromTo('.score-counter',
+        { innerHTML: 0 },
+        { innerHTML: DOMAIN_SCORE, duration: 2, snap: { innerHTML: 1 }, ease: 'power2.out' }
+      );
+      gsap.fromTo('.factor-bar',
+        { scaleX: 0, transformOrigin: 'left center' },
+        { scaleX: 1, duration: 1.2, stagger: 0.1, ease: 'power2.out', delay: 0.8 }
+      );
     }, mainRef);
     return () => ctx.revert();
   }, []);
 
-  // Get all issues for the active factor
   const factorIssues = (issuesData[activeFactor] || []).filter(i => !fixedIssues.includes(i.id));
-  
-  // Get unique sub-categories for the active factor
   const factorSubCategories = ['All', ...Array.from(new Set(factorIssues.map((i: any) => i.category)))];
-
-  // Filter issues by sub-category
-  const activeIssues = activeIssueCategory === 'All' 
-    ? factorIssues 
+  const activeIssues = activeIssueCategory === 'All'
+    ? factorIssues
     : factorIssues.filter((i: any) => i.category === activeIssueCategory);
+
+  const activeFactorData = securityFactors.find(f => f.id === activeFactor);
+
+  // Score label
+  const scoreLabel = globalScore >= 90 ? 'Excellent' : globalScore >= 75 ? 'Fair' : globalScore >= 60 ? 'Needs Work' : 'Critical';
+  const scoreLabelColor = globalScore >= 90 ? 'text-green-500' : globalScore >= 75 ? 'text-orange-500' : 'text-red-500';
 
   return (
     <div className="min-h-full flex flex-col gap-6 p-8 bg-[#f8fbff]" ref={mainRef}>
-      
+
       {/* Header */}
       <div className="flex justify-between items-end mb-2">
         <div className="space-y-1">
@@ -268,7 +301,9 @@ export default function SecurityReport() {
             <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase">{domain}</h1>
             <span className="px-2 py-0.5 bg-slate-900 text-white text-[10px] font-black rounded border border-slate-800 uppercase tracking-tighter">Verified</span>
           </div>
-          <p className="text-[11px] text-slate-500 font-black uppercase tracking-[0.2em]">Tier-1 Security Assessment & Logic Analysis</p>
+          <p className="text-[11px] text-slate-500 font-black uppercase tracking-[0.2em]">
+            Tier-1 Security Assessment — {SUBDOMAINS.length} Subdomains Scanned · Last run: Mar 15, 2026
+          </p>
         </div>
         <div className="flex gap-2">
           <button className="px-5 py-2.5 border border-slate-200 text-[10px] font-black text-slate-600 bg-white hover:bg-slate-50 transition-all rounded-lg uppercase tracking-widest shadow-sm">
@@ -282,74 +317,41 @@ export default function SecurityReport() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        
+
         {/* Score Card */}
-        <div className="xl:col-span-8 bg-white rounded-2xl p-10 shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-16 relative overflow-hidden group">
+        <div className="xl:col-span-12 bg-white rounded-2xl p-10 shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-16 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-80 h-80 bg-slate-50/50 rounded-full -mr-40 -mt-40 group-hover:scale-110 transition-transform duration-1000" />
-          
+
           <div className="flex flex-col items-center">
             <div className="relative">
-              <div className="text-9xl font-black text-slate-900 score-counter leading-none tracking-tighter">{globalScore.toFixed(0)}</div>
-              <div className="absolute top-0 -right-8 bg-blue-600 text-white px-2 py-0.5 text-[10px] font-black rounded border-2 border-white shadow-xl">
-                +2.1
+              <div className="text-9xl font-black text-slate-900 score-counter leading-none tracking-tighter">{globalScore}</div>
+              <div className={`absolute top-0 -right-16 px-2 py-0.5 text-[10px] font-black rounded border-2 border-white shadow-xl ${
+                globalScore >= 75 ? 'bg-orange-500 text-white' : 'bg-red-600 text-white'
+              }`}>
+                {scoreLabel}
               </div>
             </div>
             <p className="text-[9px] font-black text-slate-400 mt-4 tracking-[0.4em] uppercase">Global Security Health Index</p>
           </div>
-          
+
           <div className="flex-1 w-full space-y-10">
             <div className="space-y-5">
               <div className="flex justify-between items-end">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Risk Mitigation Velocity</span>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Security Score Progress</span>
                 <span className="text-[10px] font-black text-blue-600 px-2 py-1 bg-blue-50 rounded uppercase tracking-tighter">Target 98%</span>
               </div>
               <div className="h-4 w-full bg-slate-100 rounded-sm overflow-hidden p-0.5">
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${globalScore}%` }}
-                  transition={{ duration: 1.5, ease: "circOut" }}
+                  transition={{ duration: 1.5, ease: 'circOut' }}
                   className="h-full bg-slate-900 rounded-sm"
                 />
               </div>
             </div>
-            
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: 'Surface', value: 'Low', color: 'text-green-500', bg: 'bg-green-50' },
-                { label: 'Exposures', value: '4', color: 'text-orange-500', bg: 'bg-orange-50' },
-                { label: 'Health', value: '98%', color: 'text-blue-500', bg: 'bg-blue-50' }
-              ].map((stat, i) => (
-                <div key={i} className={`${stat.bg} p-4 rounded-2xl border border-white/50 text-center`}>
-                  <p className="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">{stat.label}</p>
-                  <p className={`text-xl font-black ${stat.color}`}>{stat.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Portfoilo/Stats Summary */}
-        <div className="xl:col-span-4 bg-slate-900 rounded-[32px] p-8 shadow-2xl flex flex-col justify-between text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl" />
-          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-8 px-2 border-l-2 border-blue-500">Threat Intelligence</h3>
-          <div className="space-y-6">
-            {[
-              { label: 'Direct Threats', value: '0', color: 'bg-green-500' },
-              { label: 'Heuristic Alerts', value: '12', color: 'bg-orange-500' },
-              { label: 'Dark Web Leaks', value: '3', color: 'bg-red-500' }
-            ].map((row, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-2 h-2 rounded-full ${row.color} shadow-[0_0_10px_rgba(34,197,94,0.5)]`} />
-                  <span className="text-xs font-bold text-slate-300">{row.label}</span>
-                </div>
-                <span className="text-sm font-black">{row.value}</span>
-              </div>
-            ))}
+
           </div>
-          <button className="w-full py-4 bg-white/10 hover:bg-white/20 text-white text-xs font-black rounded-2xl mt-10 transition-all uppercase tracking-widest border border-white/10">
-            Intelligence Feed
-          </button>
         </div>
       </div>
 
@@ -359,7 +361,7 @@ export default function SecurityReport() {
           <h3 className="text-xl font-black text-slate-900 tracking-tight">Deep Analysis Explorer</h3>
           <div className="flex items-center space-x-2 text-xs font-bold text-slate-400">
             <span className="w-2 h-2 rounded-full bg-green-500" />
-            <span>Real-time Monitoring Active</span>
+            <span>Scan completed Mar 15, 2026 · 11 subdomains</span>
           </div>
         </div>
 
@@ -367,17 +369,15 @@ export default function SecurityReport() {
           {/* Vertical Factor Sidebar */}
           <div className="lg:col-span-3 bg-slate-50/50 border-r border-slate-50 p-6 space-y-2 overflow-y-auto">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 px-2">Security Factors</p>
-
             {securityFactors.map((factor) => (
               <motion.button
                 key={factor.id}
                 onClick={() => {
-                    setActiveFactor(factor.id as any);
-                    setActiveIssueCategory('All');
-                    setSelectedIssue(null);
+                  setActiveFactor(factor.id);
+                  setActiveIssueCategory('All');
+                  setSelectedIssue(null);
                 }}
-                whileHover={activeFactor === factor.id ? { x: 2 } : { x: 2, backgroundColor: 'rgba(255, 255, 255, 0.95)' }}
-                animate={{ 
+                animate={{
                   backgroundColor: activeFactor === factor.id ? '#0f172a' : 'rgba(255, 255, 255, 1)',
                   borderColor: activeFactor === factor.id ? '#1e293b' : '#f1f5f9',
                   x: activeFactor === factor.id ? 4 : 0
@@ -386,10 +386,9 @@ export default function SecurityReport() {
                 whileTap={{ scale: 0.98 }}
                 className="w-full relative flex items-center justify-between p-4 rounded-xl border mb-2 overflow-hidden shadow-sm"
               >
-                {/* Precise Active Indicator */}
                 <AnimatePresence>
                   {activeFactor === factor.id && (
-                    <motion.div 
+                    <motion.div
                       layoutId="active-indicator"
                       initial={{ opacity: 0, scaleY: 0 }}
                       animate={{ opacity: 1, scaleY: 1 }}
@@ -398,7 +397,6 @@ export default function SecurityReport() {
                     />
                   )}
                 </AnimatePresence>
-
                 <div className="flex items-center space-x-3 relative z-20">
                   <div className={`p-2 rounded-lg transition-all duration-300 ${
                     activeFactor === factor.id ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400'
@@ -406,39 +404,35 @@ export default function SecurityReport() {
                     {factor.icon}
                   </div>
                   <div className="text-left">
-                    <motion.span 
+                    <motion.span
                       animate={{ color: activeFactor === factor.id ? '#ffffff' : '#0f172a' }}
                       className="block text-[11px] font-black tracking-tight"
                     >
                       {factor.id}
                     </motion.span>
-                    <motion.span 
-                      animate={{ color: activeFactor === factor.id ? 'rgba(96, 165, 250, 0.8)' : '#94a3b8' }}
+                    <motion.span
+                      animate={{ color: activeFactor === factor.id ? 'rgba(96,165,250,0.8)' : '#94a3b8' }}
                       className="text-[8.5px] font-black uppercase tracking-[0.1em]"
                     >
-                      Network Asset
+                      {factor.count > 0 ? `${factor.count} issue${factor.count > 1 ? 's' : ''} found` : 'No issues'}
                     </motion.span>
                   </div>
                 </div>
-
                 <div className="flex flex-col items-end gap-1.5 relative z-20">
                   <div className="flex items-center space-x-1">
-                    <motion.span 
+                    <motion.span
                       animate={{ color: activeFactor === factor.id ? '#93c5fd' : '#0f172a' }}
                       className="text-[12px] font-black"
                     >
                       {factor.score}
                     </motion.span>
-                    <span className={`text-[8px] font-bold ${activeFactor === factor.id ? 'text-slate-500' : 'text-slate-400'}`}>
-                      /100
-                    </span>
+                    <span className={`text-[8px] font-bold ${activeFactor === factor.id ? 'text-slate-500' : 'text-slate-400'}`}>/100</span>
                   </div>
-                  
                   {factor.count > 0 && (
                     <div className={`text-[8px] font-black px-1.5 py-0.5 rounded ${
                       activeFactor === factor.id ? 'bg-blue-500/20 text-blue-400' : 'bg-red-50 text-red-500'
                     }`}>
-                      {factor.count} Vulnerabilities
+                      {factor.count} {factor.count === 1 ? 'Vulnerability' : 'Vulnerabilities'}
                     </div>
                   )}
                 </div>
@@ -446,53 +440,8 @@ export default function SecurityReport() {
             ))}
           </div>
 
-          {/* Factor Details & Summary */}
-          <div className="lg:col-span-3 p-8 bg-white border-r border-slate-50 space-y-8">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Sector Score</p>
-                <span className="text-2xl font-black text-slate-900">{securityFactors.find(f => f.id === activeFactor)?.score}</span>
-              </div>
-              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${securityFactors.find(f => f.id === activeFactor)?.score}%` }}
-                  className="h-full bg-blue-600"
-                />
-              </div>
-            </div>
-
-            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-4">
-              <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Logic Summary</h4>
-              <p className="text-[13px] text-slate-500 font-medium leading-relaxed">
-                Ongoing assessment of {activeFactor} vectors shows {factorIssues.length} active vulnerabilities that require immediate attention.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-               <div className="flex items-center space-x-3 p-3 bg-white rounded-2xl border border-slate-100 hover:shadow-md transition-all cursor-pointer group">
-                  <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
-                    <ShieldCheck size={16} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[10px] font-bold text-slate-900 uppercase">Compliance</p>
-                    <p className="text-[9px] text-green-500 font-bold uppercase">Pass</p>
-                  </div>
-               </div>
-               <div className="flex items-center space-x-3 p-3 bg-white rounded-2xl border border-slate-100 hover:shadow-md transition-all cursor-pointer group">
-                  <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
-                    <Clock size={16} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[10px] font-bold text-slate-900 uppercase">Integrity</p>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase">Verified</p>
-                  </div>
-               </div>
-            </div>
-          </div>
-
-          {/* Issues List Area */}
-          <div className="lg:col-span-6 p-8 bg-slate-50/20 relative">
+          {/* Issues List */}
+          <div className="lg:col-span-9 p-8 bg-slate-50/20 relative">
             <AnimatePresence mode="wait">
               {!selectedIssue ? (
                 <motion.div
@@ -504,7 +453,7 @@ export default function SecurityReport() {
                 >
                   <div className="flex items-center justify-between mb-8 px-2">
                     <div className="space-y-1">
-                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Issues</h4>
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Issues · {activeFactor}</h4>
                       <p className="text-[10px] text-slate-400 font-bold uppercase">{domain}</p>
                     </div>
                     <div className="flex space-x-4">
@@ -519,19 +468,15 @@ export default function SecurityReport() {
                     </div>
                   </div>
 
-                  {/* Dynamic Sub-Category Filters */}
+                  {/* Sub-category filters */}
                   <div className="flex space-x-3 mb-8 overflow-x-auto no-scrollbar pb-2">
                     {factorSubCategories.map((cat) => {
-                      const countInCat = cat === 'All' 
-                        ? factorIssues.length 
-                        : factorIssues.filter((i: any) => i.category === cat).length;
-                      
+                      const countInCat = cat === 'All' ? factorIssues.length : factorIssues.filter((i: any) => i.category === cat).length;
                       const isActive = activeIssueCategory === cat;
-
                       return (
                         <button
                           key={cat}
-                          onClick={() => setActiveIssueCategory(cat as string)}
+                          onClick={() => setActiveIssueCategory(cat)}
                           className={`flex items-center space-x-2 px-5 py-2 rounded-lg border transition-all duration-300 whitespace-nowrap ${
                             isActive
                               ? 'bg-slate-900 text-white border-slate-800 shadow-xl shadow-slate-900/10'
@@ -539,9 +484,7 @@ export default function SecurityReport() {
                           }`}
                         >
                           <span className="text-[13px] font-black">{cat}</span>
-                          <span className={`text-[10px] font-bold ${isActive ? 'text-white/70' : 'text-slate-500'}`}>
-                            ({countInCat})
-                          </span>
+                          <span className={`text-[10px] font-bold ${isActive ? 'text-white/70' : 'text-slate-500'}`}>({countInCat})</span>
                         </button>
                       );
                     })}
@@ -550,8 +493,8 @@ export default function SecurityReport() {
                   <div className="space-y-4">
                     {activeIssues.length > 0 ? (
                       activeIssues.map((issue) => (
-                        <div 
-                          key={issue.id} 
+                        <div
+                          key={issue.id}
                           onClick={() => setSelectedIssue(issue)}
                           className="group bg-white rounded-[24px] border border-slate-100 p-6 hover:shadow-lg hover:border-slate-200 transition-all cursor-pointer"
                         >
@@ -560,48 +503,37 @@ export default function SecurityReport() {
                               <div className="flex items-center space-x-3">
                                 <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${
                                   issue.severity === 'Critical' ? 'bg-red-50 text-red-600 border border-red-100' :
-                                  issue.severity === 'High' ? 'bg-orange-50 text-orange-600 border border-orange-100' :
-                                  issue.severity === 'Medium' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' :
-                                  'bg-blue-50 text-blue-600 border border-blue-100'
+                                  issue.severity === 'High'     ? 'bg-orange-50 text-orange-600 border border-orange-100' :
+                                  issue.severity === 'Medium'   ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' :
+                                                                   'bg-blue-50 text-blue-600 border border-blue-100'
                                 }`}>
                                   {issue.severity}
                                 </span>
                                 <h5 className="text-sm font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors uppercase">{issue.title}</h5>
                               </div>
-                              
                               <p className="text-[13px] text-slate-500 font-medium leading-relaxed max-w-2xl line-clamp-2">{issue.desc}</p>
-                              
-                              <div className="flex items-center space-x-8 pt-2">
-                                <div className="space-y-1">
-                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Remediation</p>
-                                  <p className="text-[11px] font-bold text-blue-600">{issue.remediation}</p>
-                                </div>
+                              <div className="flex items-center space-x-2 pt-1">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Affected:</span>
+                                <span className="text-[10px] font-bold text-blue-600">{issue.findings.length} {issue.findings.length === 1 ? 'host' : 'hosts'}</span>
+                                <span className="text-[9px] text-slate-300">·</span>
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Score impact:</span>
+                                <span className="text-[10px] font-bold text-red-500">−{issue.impact} pts</span>
                               </div>
                             </div>
-                            
-                            <div className="flex items-center space-x-3">
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleFix(issue.id);
-                                }}
+                            <div className="flex items-center space-x-3 ml-4">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleFix(issue.id); }}
                                 disabled={isFixing === issue.id}
                                 className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all inline-flex items-center space-x-2 ${
-                                  isFixing === issue.id 
+                                  isFixing === issue.id
                                     ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                     : 'bg-blue-600 text-white hover:bg-blue-700 border border-blue-600 shadow-sm'
                                 }`}
                               >
                                 {isFixing === issue.id ? (
-                                  <>
-                                    <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                                    <span>Resolving...</span>
-                                  </>
+                                  <><div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /><span>Resolving...</span></>
                                 ) : (
-                                  <>
-                                    <ShieldCheck size={12} />
-                                    <span>Fix</span>
-                                  </>
+                                  <><ShieldCheck size={12} /><span>Fix</span></>
                                 )}
                               </button>
                               <button className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all">
@@ -634,7 +566,7 @@ export default function SecurityReport() {
                 >
                   {/* Detail Header */}
                   <div className="flex flex-col space-y-2">
-                    <button 
+                    <button
                       onClick={() => setSelectedIssue(null)}
                       className="flex items-center space-x-2 text-slate-400 hover:text-slate-900 transition-colors group mb-2"
                     >
@@ -646,30 +578,22 @@ export default function SecurityReport() {
 
                   {/* Summary Cards */}
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 space-y-2 group/card overflow-hidden relative">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12 group-hover/card:scale-110 transition-transform" />
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Threat Level</p>
-                      <p className={`text-xl font-black ${
-                        selectedIssue.severity === 'Critical' ? 'text-red-500' : 
-                        selectedIssue.severity === 'High' ? 'text-orange-500' : 'text-blue-500'
-                      }`}>{selectedIssue.severity}</p>
-                      <p className="text-[8px] text-slate-600 font-extrabold uppercase tracking-tighter">Expert Calibration</p>
-                    </div>
-                    <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 space-y-2 group/card overflow-hidden relative">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12 group-hover/card:scale-110 transition-transform" />
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Breach Risk</p>
-                      <p className={`text-xl font-black ${
-                        selectedIssue.breachRisk === 'Critical' ? 'text-red-500' : 
-                        selectedIssue.breachRisk === 'High' ? 'text-orange-500' : 'text-blue-500'
-                      }`}>{selectedIssue.breachRisk}</p>
-                      <p className="text-[8px] text-slate-600 font-extrabold uppercase tracking-tighter">Vector Likelihood</p>
-                    </div>
-                    <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 space-y-2 group/card overflow-hidden relative">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12 group-hover/card:scale-110 transition-transform" />
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Score Delta</p>
-                      <p className="text-xl font-black text-white">-{selectedIssue.impact}</p>
-                      <p className="text-[8px] text-slate-600 font-extrabold uppercase tracking-tighter">System-Wide Impact</p>
-                    </div>
+                    {[
+                      { label: 'Threat Level',  value: selectedIssue.severity,   sub: 'Expert Calibration' },
+                      { label: 'Breach Risk',   value: selectedIssue.breachRisk, sub: 'Vector Likelihood' },
+                      { label: 'Score Delta',   value: `-${selectedIssue.impact}`, sub: 'Per-Subdomain Impact' },
+                    ].map((card, i) => (
+                      <div key={i} className="bg-slate-900 p-6 rounded-xl border border-slate-800 space-y-2 overflow-hidden relative">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12" />
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">{card.label}</p>
+                        <p className={`text-xl font-black ${
+                          card.value === 'Critical' || card.value.startsWith('-2') ? 'text-red-500' :
+                          card.value === 'High'     || card.value.startsWith('-1') ? 'text-orange-500' :
+                          card.value === 'Medium'   ? 'text-yellow-400' : 'text-white'
+                        }`}>{card.value}</p>
+                        <p className="text-[8px] text-slate-600 font-extrabold uppercase tracking-tighter">{card.sub}</p>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Description */}
@@ -681,7 +605,7 @@ export default function SecurityReport() {
                     <p className="text-[13px] text-slate-600 font-medium leading-relaxed">{selectedIssue.desc}</p>
                   </div>
 
-                  {/* Recommendations */}
+                  {/* Remediation */}
                   <div className="bg-slate-950 p-6 rounded-xl border border-slate-800 space-y-3 shadow-2xl">
                     <div className="flex items-center space-x-2 text-blue-500">
                       <ShieldCheck size={14} className="stroke-[3]" />
@@ -692,10 +616,12 @@ export default function SecurityReport() {
 
                   {/* Findings Table */}
                   <div className="space-y-4">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Findings</h4>
-                    <div className="bg-slate-900 rounded-[32px] overflow-hidden border border-slate-800">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
+                      Findings ({selectedIssue.findings.length} hosts)
+                    </h4>
+                    <div className="bg-slate-900 rounded-[32px] overflow-hidden border border-slate-800 max-h-72 overflow-y-auto">
                       <table className="w-full text-left text-[11px]">
-                        <thead>
+                        <thead className="sticky top-0 bg-slate-900">
                           <tr className="border-b border-slate-800 text-slate-500">
                             <th className="px-6 py-4 font-black uppercase tracking-widest">Status</th>
                             <th className="px-6 py-4 font-black uppercase tracking-widest">Target</th>
@@ -707,36 +633,30 @@ export default function SecurityReport() {
                         </thead>
                         <tbody className="text-slate-300">
                           {selectedIssue.findings.map((f: any, i: number) => (
-                            <tr key={i} className="group hover:bg-white/5 transition-colors">
-                              <td className="px-6 py-5">
+                            <tr key={i} className="group hover:bg-white/5 transition-colors border-b border-slate-800/50 last:border-0">
+                              <td className="px-6 py-4">
                                 <span className="px-2 py-0.5 rounded-full border border-orange-500/30 text-orange-500 bg-orange-500/5 font-bold uppercase text-[9px]">
                                   {f.status}
                                 </span>
                               </td>
-                              <td className="px-6 py-5 font-mono text-slate-400">{f.target}</td>
-                              <td className="px-6 py-5 font-bold">{f.port}</td>
-                              <td className="px-6 py-5 font-black text-white">{f.cvss}</td>
-                              <td className="px-6 py-5 text-slate-500 font-medium uppercase">{f.observation}</td>
-                              <td className="px-6 py-5 text-right">
-                                <button 
+                              <td className="px-6 py-4 font-mono text-slate-400 text-[10px]">{f.target}</td>
+                              <td className="px-6 py-4 font-bold">{f.port}</td>
+                              <td className="px-6 py-4 font-black text-white">{f.cvss}</td>
+                              <td className="px-6 py-4 text-slate-500 font-medium uppercase text-[10px]">{f.observation}</td>
+                              <td className="px-6 py-4 text-right">
+                                <button
                                   onClick={() => handleFix(selectedIssue.id)}
                                   disabled={isFixing === selectedIssue.id}
                                   className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all inline-flex items-center space-x-2 ${
-                                    isFixing === selectedIssue.id 
+                                    isFixing === selectedIssue.id
                                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                                       : 'bg-blue-600 text-white hover:bg-blue-700 border border-blue-600 shadow-sm'
                                   }`}
                                 >
                                   {isFixing === selectedIssue.id ? (
-                                    <>
-                                      <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                                      <span>Resolving...</span>
-                                    </>
+                                    <><div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /><span>Resolving...</span></>
                                   ) : (
-                                    <>
-                                      <ShieldCheck size={12} />
-                                      <span>Fix</span>
-                                    </>
+                                    <><ShieldCheck size={12} /><span>Fix</span></>
                                   )}
                                 </button>
                               </td>
@@ -752,7 +672,6 @@ export default function SecurityReport() {
           </div>
         </div>
       </div>
-
     </div>
   );
 }
