@@ -13,7 +13,7 @@ export async function apiFetch<T>(endpoint: string, options: CustomRequestInit =
   
   // Create AbortController for timeout
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 15000); // Dynamic timeout or 15s default
+  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 60000); // Dynamic timeout or 60s default
   
   // Try to get auth token from localStorage if we had authentication
   // const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;

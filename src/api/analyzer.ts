@@ -21,6 +21,7 @@ export interface GeneratedScoreResponse {
 export async function submitForAnalyzer(scanId: string): Promise<GeneratedScoreResponse> {
   return apiFetch<GeneratedScoreResponse>(`/score/${scanId}`, {
     method: 'POST',
+    timeout: 300000,
   });
 }
 
@@ -30,5 +31,6 @@ export async function submitForAnalyzer(scanId: string): Promise<GeneratedScoreR
 export async function getAnalyzerScore(scanId: string): Promise<GeneratedScoreResponse> {
     return apiFetch<GeneratedScoreResponse>(`/score/get_score/${scanId}`, {
         method: 'GET',
+        timeout: 300000,
     });
 }
