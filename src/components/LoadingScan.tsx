@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getScanResult } from '@/api/scanner';
+import { submitForAnalyzer } from '@/api/analyzer';
 import { 
   Shield, 
   Search, 
@@ -21,7 +23,8 @@ import {
 
 interface LoadingScanProps {
   domain: string;
-  onComplete: () => void;
+  scanId: string;
+  onComplete: (scanId: string) => void;
 }
 
 type ScanStageType = 
@@ -35,10 +38,12 @@ type ScanStageType =
   | 'ports' 
   | 'ai';
 
-export const LoadingScan: React.FC<LoadingScanProps> = ({ domain, onComplete }) => {
+export const LoadingScan: React.FC<LoadingScanProps> = ({ domain, scanId, onComplete }) => {
   const [currentStage, setCurrentStage] = useState<ScanStageType>('dns');
   const [progress, setProgress] = useState(0);
   const [isDone, setIsDone] = useState(false);
+  const [realScanDone, setRealScanDone] = useState(false);
+  const [analyzerError, setAnalyzerError] = useState<string | null>(null);
 
   const stages = [
     { id: 'dns', label: 'DNS Reconnaissance', icon: <Globe size={18} /> },
@@ -53,6 +58,27 @@ export const LoadingScan: React.FC<LoadingScanProps> = ({ domain, onComplete }) 
   ];
 
   useEffect(() => {
+    let isMounted = true;
+    const pollScan = async () => {
+      try {
+        const result = await getScanResult(scanId);
+        // The scan is done when the webhook has overwritten the initial
+        // {"status":"pending","progress":0} payload with the real scan data.
+        // After the Go worker finishes, results will contain a "data" key.
+        if (result && result.status !== 'pending' && result.data) {
+          if (isMounted) setRealScanDone(true);
+        } else {
+          if (isMounted) setTimeout(pollScan, 3000);
+        }
+      } catch (e) {
+        if (isMounted) setTimeout(pollScan, 3000);
+      }
+    };
+    pollScan();
+    return () => { isMounted = false; };
+  }, [scanId]);
+
+  useEffect(() => {
     let currentIdx = 0;
     const scrollInterval = setInterval(() => {
       if (currentIdx < stages.length - 1) {
@@ -61,16 +87,26 @@ export const LoadingScan: React.FC<LoadingScanProps> = ({ domain, onComplete }) 
         setProgress(Math.floor((currentIdx / stages.length) * 100));
       } else {
         clearInterval(scrollInterval);
-        setProgress(100);
-        setTimeout(() => {
-          setIsDone(true);
-          setTimeout(onComplete, 1500);
-        }, 1000);
+        setProgress(99); // Wait for real scan if taking longer
       }
-    }, 1500);
+    }, 1200);
 
     return () => clearInterval(scrollInterval);
-  }, [onComplete]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (progress === 99 && realScanDone && !isDone && !analyzerError) {
+      submitForAnalyzer(scanId)
+        .then(() => {
+          setProgress(100);
+          setIsDone(true);
+          setTimeout(() => onComplete(scanId), 1500);
+        })
+        .catch(err => {
+          setAnalyzerError(err.message || 'Analysis failed');
+        });
+    }
+  }, [progress, realScanDone, isDone, scanId, onComplete, analyzerError]);
 
   const activeIndex = stages.findIndex(s => s.id === currentStage);
 
@@ -145,7 +181,9 @@ export const LoadingScan: React.FC<LoadingScanProps> = ({ domain, onComplete }) 
         <div className="flex justify-between items-end">
           <div className="space-y-1">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Aggregate Synthesis</span>
-            <p className="text-slate-900 text-xs font-bold uppercase">{isDone ? 'Sequence Completed' : `Sector ${activeIndex + 1}/${stages.length} Active`}</p>
+            <p className="text-slate-900 text-xs font-bold uppercase">
+              {analyzerError ? 'Error: ' + analyzerError : isDone ? 'Sequence Completed' : progress === 99 ? 'Awaiting Backend Processing' : `Sector ${activeIndex + 1}/${stages.length} Active`}
+            </p>
           </div>
           <span className="text-2xl font-black text-blue-600 tracking-tighter">{progress}%</span>
         </div>

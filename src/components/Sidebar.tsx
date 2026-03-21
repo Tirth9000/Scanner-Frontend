@@ -20,7 +20,7 @@ import { useSidebar } from '@/context/SidebarContext';
 
 const navItems = [
   { id: 'assessment', label: 'Assessment', icon: <BarChart3 />, path: '/dashboard' },
-  { id: 'new-scan', label: 'New Scan', icon: <Search />, path: '/dashboard/new-scan' },
+  { id: 'new-scan', label: 'New Scan', icon: <Search />, path: '/' },
   { id: 'malware-scan', label: 'Malware Scan', icon: <ShieldAlert />, path: '/dashboard/malware-scan' },
   { id: 'scan-history', label: 'Scan History', icon: <History />, path: '/dashboard/scan-history' },
   { id: 'malware-scan-history', label: 'Malware Scan History', icon: <History />, path: '/dashboard/malware-scan-history' },

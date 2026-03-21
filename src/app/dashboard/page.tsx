@@ -1,109 +1,146 @@
 'use client'
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
-  Activity, 
   ShieldCheck, 
-  Globe, 
-  TrendingUp,
-  AlertTriangle,
-  ArrowRight
+  Loader2,
+  CheckCircle2,
+  Shield,
+  ArrowRight,
+  ClipboardCheck,
+  Zap
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { getLatestAssessment } from '@/api/assessment';
+import { AssessmentResult } from '@/components/AssessmentResult';
 
 export default function AssessmentOverview() {
+  const searchParams = useSearchParams();
+  const showSuccess = searchParams.get('assessment_complete') === 'true';
+  const [assessment, setAssessment] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLatest = async () => {
+      try {
+        const data = await getLatestAssessment();
+        if (data && data.summary) {
+          setAssessment(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch latest assessment:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLatest();
+  }, []);
+
   return (
-    <div className="min-h-full flex flex-col gap-6 p-8">
+    <div className="min-h-full flex flex-col gap-6 p-8 bg-[#fcfcfc]">
       
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-3 text-emerald-700 mb-2"
+          >
+            <CheckCircle2 size={20} />
+            <span className="text-sm font-bold">Assessment successfully completed! Your security posture has been updated.</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex justify-between items-end mb-2">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Security Assessment</h1>
-          <p className="text-sm text-slate-500 font-medium">Enterprise-wide security posture and aggregate monitoring.</p>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">Security Assessment</h1>
+          <p className="text-sm text-slate-500 font-medium tracking-tight">Enterprise-wide security posture and maturity monitoring.</p>
         </div>
-        <Link href="/dashboard/new-scan">
-          <button className="px-4 py-2 bg-[#3b2a8d] text-white text-sm font-bold hover:bg-[#2d1f70] transition-all flex items-center space-x-2 rounded-xl shadow-lg shadow-[#3b2a8d]/20">
-            <Plus className="w-4 h-4" />
-            <span>New Assessment</span>
-          </button>
-        </Link>
+        {assessment && (
+          <Link href="/dashboard/assessment/questionnaire">
+            <button className="px-5 py-2.5 bg-[#3b2a8d] text-white text-xs font-black uppercase tracking-widest hover:bg-[#2d1f70] transition-all flex items-center space-x-2 rounded-xl shadow-lg shadow-[#3b2a8d]/20 active:scale-95">
+              <Plus className="w-4 h-4" />
+              <span>Retake Assessment</span>
+            </button>
+          </Link>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { icon: <ShieldCheck className="text-green-500" />, label: 'Health Score', value: '86', trend: '+2.4%', sub: 'Global Average' },
-          { icon: <Activity className="text-blue-500" />, label: 'Active Scans', value: '12', trend: 'Stable', sub: 'Last 24 hours' },
-          { icon: <AlertTriangle className="text-orange-500" />, label: 'Critical Risks', value: '3', trend: '-1', sub: 'Requires Attention' },
-        ].map((stat, i) => (
-          <motion.div 
-            key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col gap-4"
-          >
-            <div className="flex justify-between items-start">
-              <div className="p-3 bg-slate-50 rounded-2xl">{stat.icon}</div>
-              <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${stat.trend.includes('+') ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-500'}`}>
-                {stat.trend}
-              </span>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{stat.label}</p>
-              <h2 className="text-3xl font-black text-slate-900">{stat.value}</h2>
-            </div>
-            <p className="text-[10px] font-medium text-slate-400">{stat.sub}</p>
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <div className="xl:col-span-8 space-y-6">
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 h-[400px] flex flex-col justify-center items-center text-center space-y-4">
-            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
-               <TrendingUp size={32} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-900">Aggregate Trends</h3>
-              <p className="text-sm text-slate-500 max-w-sm">Visualization of security score improvements across all monitored assets.</p>
-            </div>
-            <div className="w-full max-w-md h-32 bg-slate-50 rounded-2xl animate-pulse" />
+      <div className="flex-1">
+        {loading ? (
+          <div className="py-32 flex flex-col items-center justify-center gap-4 text-slate-400">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <p className="text-[10px] font-black uppercase tracking-widest">Synchronizing Security Data...</p>
           </div>
-        </div>
-
-        <div className="xl:col-span-4 space-y-6">
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-            <div className="flex justify-between items-center mb-6">
-               <h3 className="text-sm font-bold text-slate-900">Recent Activity</h3>
-               <Link href="/dashboard/scan-history" className="text-[10px] font-bold text-blue-600 hover:underline">View All</Link>
-            </div>
-            <div className="space-y-6">
-              {[
-                { domain: 'google.com', time: '2h ago', status: 'Healthy' },
-                { domain: 'microsoft.com', time: '5h ago', status: 'Warning' },
-                { domain: 'apple.com', time: '1d ago', status: 'Healthy' },
-                { domain: 'amazon.com', time: '2d ago', status: 'Critical' },
-              ].map((activity, i) => (
-                <div key={i} className="flex items-center justify-between group">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
-                       <Globe size={16} />
-                    </div>
-                    <div>
-                       <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{activity.domain}</p>
-                       <p className="text-[10px] text-slate-400">{activity.time}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-1.5 h-1.5 rounded-full ${activity.status === 'Healthy' ? 'bg-green-500' : activity.status === 'Warning' ? 'bg-orange-500' : 'bg-red-500'}`} />
-                    <span className="text-[10px] font-bold text-slate-500">{activity.status}</span>
-                  </div>
+        ) : assessment ? (
+          <div className="space-y-8">
+             <AssessmentResult summary={assessment.summary} />
+             
+             {/* Secondary Analytics Placeholder (Real data will go here if added) */}
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 opacity-40 grayscale pointer-events-none">
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 h-64 flex flex-col items-center justify-center text-center gap-4">
+                   <Shield className="text-blue-500" size={32} />
+                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Compliance Trends</p>
                 </div>
-              ))}
-            </div>
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 h-64 flex flex-col items-center justify-center text-center gap-4">
+                   <Zap className="text-orange-500" size={32} />
+                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Risk Mitigation</p>
+                </div>
+             </div>
           </div>
-        </div>
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex-1 flex items-center justify-center py-20 px-8"
+          >
+            <div className="max-w-2xl w-full bg-white rounded-[3rem] border border-slate-100 p-12 shadow-sm text-center space-y-8 relative overflow-hidden group">
+              {/* Background Accent */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-100 transition-colors duration-700" />
+              
+              <div className="space-y-6 relative z-10">
+                <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto text-blue-600 mb-4 transition-transform group-hover:rotate-12 duration-500">
+                  <ClipboardCheck size={40} />
+                </div>
+                
+                <div className="space-y-3">
+                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">Unlock Your Security Score</h2>
+                  <p className="text-slate-500 font-medium text-base leading-relaxed max-w-md mx-auto">
+                    Evaluate your organization&apos;s digital safety through a comprehensive 40-question maturity assessment based on enterprise security benchmarks.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                  <Link href="/dashboard/assessment/questionnaire">
+                    <button className="px-10 py-4 bg-[#3b2a8d] hover:bg-[#2a1d6a] text-white font-black text-sm rounded-2xl transition-all shadow-xl shadow-blue-900/10 flex items-center gap-3 active:scale-95 group/btn uppercase tracking-widest">
+                      Start Assessment
+                      <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                    </button>
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-3 gap-6 pt-12 border-t border-slate-50 opacity-50">
+                   {[
+                     { label: '40 Questions', sub: 'Guided review' },
+                     { label: 'A-F Rating', sub: 'Maturity grade' },
+                     { label: 'Risk Analysis', sub: 'Instant feedback' },
+                   ].map((feature, i) => (
+                     <div key={i} className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{feature.label}</p>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase">{feature.sub}</p>
+                     </div>
+                   ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
     </div>
