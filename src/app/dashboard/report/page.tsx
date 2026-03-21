@@ -110,13 +110,17 @@ function SecurityReportContent() {
                    remediation: getRemediation(vulnName),
                    breachRisk: getSeverity(vulnName),
                    impact: getImpact(vulnName),
-                   findings: findingTargets.map((t: VulnerabilityEntry) => ({
+                   findings: findingTargets.map((t: any) => ({
                        status: 'Open',
                        target: t.subdomain || (t as any),
                        ip: t.ip || '—',
                        port: t.port != null ? t.port : getPort(vulnName),
                        severity: t.severity || getSeverity(vulnName),
-                       cvss: getCVSS(vulnName),
+                       cvss: t.abuse_score ? (t.abuse_score / 10).toFixed(1) : getCVSS(vulnName),
+                       abuse_score: t.abuse_score,
+                       country: t.country,
+                       usage_type: t.usage_type,
+                       isp: t.isp,
                        observation: new Date().toLocaleDateString()
                    }))
                });
@@ -566,8 +570,8 @@ function SecurityReportContent() {
                             <th className="px-6 py-4 font-black uppercase tracking-widest">Status</th>
                             <th className="px-6 py-4 font-black uppercase tracking-widest">Target</th>
                             <th className="px-6 py-4 font-black uppercase tracking-widest">IP Address</th>
-                            <th className="px-6 py-4 font-black uppercase tracking-widest">Port</th>
-                            <th className="px-6 py-4 font-black uppercase tracking-widest">CVSS</th>
+                            <th className="px-6 py-4 font-black uppercase tracking-widest">{activeFactor === 'IP Reputation' ? 'Abuse Score' : 'Port'}</th>
+                            <th className="px-6 py-4 font-black uppercase tracking-widest">{activeFactor === 'IP Reputation' ? 'Country' : 'CVSS'}</th>
                             <th className="px-6 py-4 font-black uppercase tracking-widest">Last Observed</th>
                             <th className="px-6 py-4 font-black uppercase tracking-widest text-right">Actions</th>
                           </tr>
@@ -582,8 +586,24 @@ function SecurityReportContent() {
                               </td>
                               <td className="px-6 py-4 font-mono text-slate-400 text-[10px]">{f.target}</td>
                               <td className="px-6 py-4 font-mono text-blue-400 text-[10px]">{f.ip}</td>
-                              <td className="px-6 py-4 font-bold">{f.port}</td>
-                              <td className="px-6 py-4 font-black text-white">{f.cvss}</td>
+                              <td className="px-6 py-4 font-bold">
+                                {activeFactor === 'IP Reputation' ? (
+                                  <span className={`px-2 py-0.5 rounded ${
+                                    f.abuse_score > 50 ? 'bg-red-500/20 text-red-500' :
+                                    f.abuse_score > 20 ? 'bg-orange-500/20 text-orange-500' :
+                                    'bg-green-500/20 text-green-500'
+                                  }`}>
+                                    {f.abuse_score}%
+                                  </span>
+                                ) : f.port}
+                              </td>
+                              <td className="px-6 py-4 font-black text-white">
+                                {activeFactor === 'IP Reputation' ? (
+                                  <span className="flex items-center space-x-1.5 font-bold text-slate-400">
+                                    <span className="text-[10px]">{f.country || '—'}</span>
+                                  </span>
+                                ) : f.cvss}
+                              </td>
                               <td className="px-6 py-4 text-slate-500 font-medium uppercase text-[10px]">{f.observation}</td>
                               <td className="px-6 py-4 text-right">
                                 <button
@@ -622,7 +642,7 @@ function SecurityReportContent() {
 
 function getSeverity(vulnName: string): string {
   const critical = ['HTTP without HTTPS', '443 open without TLS'];
-  const high = ['Missing CSP header', 'Missing HSTS header', 'Missing NS record', 'Missing TXT record', 'Risky port exposed'];
+  const high = ['Missing CSP header', 'Missing HSTS header', 'Missing NS record', 'Missing TXT record', 'Risky port exposed', 'Malicious IP Activity Detected'];
   const medium = ['Missing X-Frame-Options', 'Missing X-Content-Type-Options', 'Missing MX record', 'Unexpected open port'];
   if (critical.some(k => vulnName.includes(k))) return 'Critical';
   if (high.some(k => vulnName.includes(k))) return 'High';
@@ -643,6 +663,7 @@ function getImpact(vulnName: string): number {
     'Missing MX record': 1,
     'Risky port exposed': 10,
     'Unexpected open port': 8,
+    'Malicious IP Activity Detected': 15,
   };
   for (const [key, val] of Object.entries(impactMap)) {
     if (vulnName.includes(key)) return val;
@@ -663,6 +684,7 @@ function getDescription(vulnName: string, affectedCount: number): string {
     'Missing MX record': `MX records are absent. While mail delivery may not be intended, missing MX records can indicate incomplete DNS configuration. Affects ${affectedCount} host(s).`,
     'Risky port exposed': `A risky port (e.g., 8080, 3306, 21) is open and publicly accessible. These ports are frequently targeted by scanners and automated attack tools. Affects ${affectedCount} host(s).`,
     'Unexpected open port': `An unexpected port is open. Ports not explicitly needed increase the attack surface and may indicate running services that should be firewalled. Affects ${affectedCount} host(s).`,
+    'Malicious IP Activity Detected': `Infrastructure is associated with IPs known for malicious activity (spam, hacking, DDoS). We detected ${affectedCount} high-risk IP(s) in your configuration.`,
   };
   for (const [key, val] of Object.entries(descriptions)) {
     if (vulnName.includes(key)) return val;
@@ -683,6 +705,7 @@ function getRemediation(vulnName: string): string {
     'Missing MX record': 'If mail is not intended for these subdomains, publish a null MX record to explicitly indicate this and prevent abuse.',
     'Risky port exposed': 'Close the risky port on all affected hosts or restrict access via firewall rules to trusted IPs only.',
     'Unexpected open port': 'Audit the open port and close it if the running service is not needed. Otherwise restrict access via firewall.',
+    'Malicious IP Activity Detected': 'Contact your infrastructure provider to rotate IPs or investigate potential account compromise. Ensure all egress/ingress is restricted to legitimate traffic only.',
   };
   for (const [key, val] of Object.entries(remediations)) {
     if (vulnName.includes(key)) return val;
@@ -710,6 +733,7 @@ function getCVSS(vulnName: string): string {
     'Missing MX record': '5.0',
     'Risky port exposed': '7.5',
     'Unexpected open port': '6.5',
+    'Malicious IP Activity Detected': '8.2',
   };
   for (const [key, val] of Object.entries(cvssMap)) {
     if (vulnName.includes(key)) return val;
