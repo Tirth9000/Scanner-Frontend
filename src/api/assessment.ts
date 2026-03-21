@@ -36,3 +36,12 @@ export async function getQuestions(): Promise<any[]> {
     method: 'GET',
   });
 }
+
+/**
+ * Retrieves the history of assessment results.
+ */
+export async function getAssessmentHistory(limit: number = 10): Promise<any[]> {
+  return apiFetch<any[]>(`/api/assess/history?limit=${limit}`, {
+    method: 'GET',
+  });
+}
