@@ -1,20 +1,29 @@
 @import "tailwindcss";
 
-::-webkit-scrollbar {
-  display: none;
+@theme {
+  --font-sans: "Inter", sans-serif;
+  --color-brand: #3b2a8d; /* Deep purple from 'Upgrade today' */
+  --color-brand-light: #5f42d6; /* Purple from main card */
+  --color-status-success: #1fae62; /* Green from the score 100 */
+  --color-status-warning: #f1922c; /* Orange from score 86 */
+  --color-status-danger: #ea2727;
+  --radius-custom: 8px;
 }
 
-html, body {
-  -ms-overflow-style: none;  
-  scrollbar-width: none;  
-}
-
-@layer utilities {
-  @keyframes spin-y {
-    0% { transform: rotateY(0deg); }
-    100% { transform: rotateY(360deg); }
+@layer base {
+  body {
+    background-color: #fcfcfc;
+    color: #1a1a1a;
   }
-  .animate-spin-y {
-    animation: spin-y 10s linear infinite; /* Adjust 10s to change speed */
+  
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
   }
 }

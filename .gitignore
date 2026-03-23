@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agents
+/AGENTS/
+/.agent/
+
+# project specific
+data2.json
+score2.json
+screencapture-platform-securityscorecard-io-2026-03-16-17_12_27.png
+test.py
