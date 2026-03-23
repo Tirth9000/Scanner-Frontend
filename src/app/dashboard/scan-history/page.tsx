@@ -67,16 +67,18 @@ export default function ScanHistoryPage() {
                   <div className="flex items-center space-x-2 justify-end mb-1">
                     {scan.status === 'Pending' ? (
                       <Loader2 size={14} className="text-blue-500 animate-spin" />
+                    ) : scan.status === 'Failed' ? (
+                      <AlertTriangle size={14} className="text-red-500" />
                     ) : scan.status === 'Healthy' ? (
                       <ShieldCheck size={14} className="text-green-500" />
                     ) : (
                       <AlertTriangle size={14} className="text-orange-500" />
                     )}
                     <span className="text-xs font-black text-slate-900">
-                      {scan.status === 'Pending' ? 'In Progress' : scan.score}
+                      {scan.status === 'Pending' ? 'In Progress' : scan.status === 'Failed' ? 'Failed' : scan.score}
                     </span>
                   </div>
-                  {scan.status !== 'Pending' && (
+                  {scan.status !== 'Pending' && scan.status !== 'Failed' && (
                   <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                     <div 
                       className={`h-full ${scan.score > 80 ? 'bg-green-500' : scan.score > 60 ? 'bg-orange-500' : 'bg-red-500'}`} 
