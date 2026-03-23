@@ -1,19 +1,33 @@
 'use client'
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { History, Globe, ArrowRight, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { History, Globe, ArrowRight, ShieldCheck, AlertTriangle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-
-const previousScans = [
-  { domain: 'google.com', date: 'Mar 14, 2026', score: 92, status: 'Healthy' },
-  { domain: 'officebeacon.com', date: 'Mar 13, 2026', score: 86, status: 'Healthy' },
-  { domain: 'microsoft.com', date: 'Mar 11, 2026', score: 74, status: 'Warning' },
-  { domain: 'apple.com', date: 'Mar 09, 2026', score: 89, status: 'Healthy' },
-  { domain: 'amazon.com', date: 'Mar 05, 2026', score: 42, status: 'Critical' },
-];
+import { getScanHistory } from '@/api/scanner';
 
 export default function ScanHistoryPage() {
+  const [previousScans, setPreviousScans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getScanHistory().then(data => {
+      // Map data to the expected format
+      const formatted = data.map(item => ({
+        scanId: item.scan_id,
+        domain: item.domain,
+        date: item.time ? new Date(item.time).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown',
+        score: item.score || 0,
+        status: item.status || 'Pending'
+      }));
+      setPreviousScans(formatted);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, []);
+
   return (
     <div className="min-h-full flex flex-col gap-8 p-8 bg-[#fcfcfc]">
       <div className="space-y-2">
@@ -21,16 +35,21 @@ export default function ScanHistoryPage() {
         <p className="text-sm text-slate-500 font-medium">Review and access detailed reports of previous security assessments.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {previousScans.map((scan, i) => (
+      {loading ? (
+        <div className="text-center p-8 text-slate-500 font-bold">Loading history...</div>
+      ) : previousScans.length === 0 ? (
+        <div className="text-center p-8 text-slate-500 font-bold">No previous scans found.</div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {previousScans.map((scan, i) => (
           <motion.div
-            key={scan.domain}
+            key={scan.scanId}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.05 }}
           >
             <Link 
-              href={`/dashboard/report?domain=${scan.domain}`}
+              href={scan.status === 'Pending' ? `/dashboard/active-scan?scan_id=${scan.scanId}&domain=${scan.domain}` : `/dashboard/report?scan_id=${scan.scanId}&domain=${scan.domain}`}
               className="group flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all"
             >
               <div className="flex items-center space-x-6">
@@ -46,19 +65,25 @@ export default function ScanHistoryPage() {
               <div className="flex items-center space-x-12">
                 <div className="text-right">
                   <div className="flex items-center space-x-2 justify-end mb-1">
-                    {scan.status === 'Healthy' ? (
+                    {scan.status === 'Pending' ? (
+                      <Loader2 size={14} className="text-blue-500 animate-spin" />
+                    ) : scan.status === 'Healthy' ? (
                       <ShieldCheck size={14} className="text-green-500" />
                     ) : (
                       <AlertTriangle size={14} className="text-orange-500" />
                     )}
-                    <span className="text-xs font-black text-slate-900">{scan.score}</span>
+                    <span className="text-xs font-black text-slate-900">
+                      {scan.status === 'Pending' ? 'In Progress' : scan.score}
+                    </span>
                   </div>
+                  {scan.status !== 'Pending' && (
                   <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                     <div 
                       className={`h-full ${scan.score > 80 ? 'bg-green-500' : scan.score > 60 ? 'bg-orange-500' : 'bg-red-500'}`} 
                       style={{ width: `${scan.score}%` }}
                     />
                   </div>
+                  )}
                 </div>
                 <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-all">
                   <ArrowRight size={18} />
@@ -66,8 +91,9 @@ export default function ScanHistoryPage() {
               </div>
             </Link>
           </motion.div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

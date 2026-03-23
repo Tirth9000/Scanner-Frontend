@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
@@ -15,246 +15,149 @@ import {
   Zap,
   Search,
   Activity,
-  Bug,
   Lock,
   MessageSquare,
   Database,
-  Users
+  Users,
+  Loader2
 } from 'lucide-react';
 
-// ─── Real scan data from score2.json + data2.json ────────────────────────────
+import { submitForAnalyzer, type GeneratedScoreResponse, type VulnerabilityEntry } from '@/api/analyzer';
 
-const DOMAIN_SCORE = 73;
-
-const SUBDOMAINS = [
-  { subdomain: 'facilis.officebeacon.com',      score: 75, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
-  { subdomain: 'southafrica.officebeacon.com',  score: 75, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
-  { subdomain: 'ambassador.officebeacon.com',   score: 77, issues: ['Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
-  { subdomain: 'mail.officebeacon.com',         score: 45, issues: ['Missing NS record','Missing TXT record','Missing MX record','HTTP without HTTPS','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','443 open without TLS'] },
-  { subdomain: 'book.officebeacon.com',         score: 75, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
-  { subdomain: 'events.officebeacon.com',       score: 75, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
-  { subdomain: 'go.officebeacon.com',           score: 77, issues: ['Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
-  { subdomain: 'webmail.officebeacon.com',      score: 77, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Unexpected open port 143'] },
-  { subdomain: 'insurance.officebeacon.com',    score: 77, issues: ['Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
-  { subdomain: 'www.officebeacon.com',          score: 75, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options','Risky port exposed 8080'] },
-  { subdomain: 'careers.officebeacon.com',      score: 85, issues: ['Missing NS record','Missing TXT record','Missing MX record','Missing CSP header','Missing HSTS header','Missing X-Frame-Options','Missing X-Content-Type-Options'] },
+// ─── All 10 security factor definitions ──────────────────────────────────────
+const ALL_FACTORS: { id: string; icon: React.ReactNode }[] = [
+  { id: 'Network Security',     icon: <Globe size={14} /> },
+  { id: 'Application Security', icon: <Shield size={14} /> },
+  { id: 'DNS Health',           icon: <Zap size={14} /> },
+  { id: 'TLS Security',         icon: <Lock size={14} /> },
+  { id: 'Patching',             icon: <Activity size={14} /> },
+  { id: 'IP Reputation',        icon: <Search size={14} /> },
+  { id: 'Cubit Score',          icon: <ShieldCheck size={14} /> },
+  { id: 'Hacker Chatter',       icon: <MessageSquare size={14} /> },
+  { id: 'Information Leak',     icon: <Database size={14} /> },
+  { id: 'Social Eng.',          icon: <Users size={14} /> },
 ];
 
-// Derived exposure counts by category
-const CATEGORIZED = {
-  'DNS Health': {
-    'Missing NS record':  ['facilis','southafrica','mail','book','events','webmail','www','careers'].map(s => s + '.officebeacon.com'),
-    'Missing TXT record': SUBDOMAINS.map(s => s.subdomain),
-    'Missing MX record':  SUBDOMAINS.map(s => s.subdomain),
-  },
-  'Application Security': {
-    'Missing CSP header':              SUBDOMAINS.map(s => s.subdomain),
-    'Missing HSTS header':             SUBDOMAINS.map(s => s.subdomain),
-    'Missing X-Frame-Options':         SUBDOMAINS.map(s => s.subdomain),
-    'Missing X-Content-Type-Options':  SUBDOMAINS.map(s => s.subdomain),
-    'HTTP without HTTPS':              ['mail.officebeacon.com'],
-  },
-  'Network Security': {
-    'Risky port exposed':    ['facilis','southafrica','ambassador','book','events','go','insurance','www'].map(s => s + '.officebeacon.com'),
-    'Unexpected open port':  ['webmail.officebeacon.com'],
-  },
-  'TLS Security': {
-    '443 open without TLS': ['mail.officebeacon.com'],
-  },
-};
-
-// ─── Security factor cards (left sidebar) ────────────────────────────────────
-// Scores derived from actual findings:
-//  - Application Security: all 11 subdomains missing 4 headers + 1 HTTP issue → avg penalty ~31 → score ~69
-//  - DNS Health: widespread NS/TXT/MX gaps → avg penalty ~4 → score ~96 
-//  - Network Security: 8 risky ports + 1 unexpected → score ~77
-//  - TLS Security: 1 critical (mail) out of 11 → score ~98 (low spread)
-//  - Others: no data in scan, kept as placeholder
-
-const securityFactors = [
-  { id: 'Network Security',    count: 9,  score: 77,  icon: <Globe size={14} />,       color: 'slate-600' },
-  { id: 'Application Security',count: 11, score: 69,  icon: <Shield size={14} />,      color: 'slate-500' },
-  { id: 'DNS Health',          count: 11, score: 96,  icon: <Zap size={14} />,         color: 'slate-600' },
-  { id: 'TLS Security',        count: 1,  score: 98,  icon: <Lock size={14} />,        color: 'slate-400' },
-  { id: 'Patching',            count: 0,  score: 100, icon: <Activity size={14} />,    color: 'slate-500' },
-  { id: 'IP Reputation',       count: 0,  score: 100, icon: <Search size={14} />,      color: 'slate-500' },
-  { id: 'Cubit Score',         count: 0,  score: 100, icon: <ShieldCheck size={14} />, color: 'slate-600' },
-  { id: 'Hacker Chatter',      count: 0,  score: 100, icon: <MessageSquare size={14} />,color: 'slate-400' },
-  { id: 'Information Leak',    count: 0,  score: 100, icon: <Database size={14} />,    color: 'slate-500' },
-  { id: 'Social Eng.',         count: 0,  score: 100, icon: <Users size={14} />,       color: 'slate-400' },
-];
-
-// ─── Issues per factor (derived directly from score2.json) ───────────────────
-
-const issuesData: Record<string, any[]> = {
-  'Network Security': [
-    {
-      id: 1,
-      title: 'Risky Port 8080 Exposed',
-      severity: 'High',
-      category: 'Open Ports',
-      desc: 'Port 8080 is open on 8 subdomains. This is a well-known alternative HTTP port frequently targeted by scanners and automated attack tools. Exposing it unnecessarily increases the attack surface.',
-      remediation: 'Close port 8080 on all affected hosts or restrict access via firewall rules to trusted IPs only.',
-      breachRisk: 'High',
-      impact: 10,
-      findings: [
-        { status: 'Open', target: 'facilis.officebeacon.com',     port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
-        { status: 'Open', target: 'southafrica.officebeacon.com', port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
-        { status: 'Open', target: 'ambassador.officebeacon.com',  port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
-        { status: 'Open', target: 'book.officebeacon.com',        port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
-        { status: 'Open', target: 'events.officebeacon.com',      port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
-        { status: 'Open', target: 'go.officebeacon.com',          port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
-        { status: 'Open', target: 'insurance.officebeacon.com',   port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
-        { status: 'Open', target: 'www.officebeacon.com',         port: '8080', cvss: '7.5', observation: 'Mar 15, 2026' },
-      ]
-    },
-    {
-      id: 2,
-      title: 'Unexpected Port 143 (IMAP) Open',
-      severity: 'Medium',
-      category: 'Open Ports',
-      desc: 'Port 143 (unencrypted IMAP) is open on webmail.officebeacon.com. This port was not expected and transmits email credentials in plain text, making it susceptible to eavesdropping.',
-      remediation: 'Disable plain IMAP (port 143) and only allow IMAPS (port 993). Enforce TLS for all mail traffic.',
-      breachRisk: 'Medium',
-      impact: 8,
-      findings: [
-        { status: 'Open', target: 'webmail.officebeacon.com', port: '143', cvss: '6.5', observation: 'Mar 15, 2026' },
-      ]
-    },
-  ],
-
-  'Application Security': [
-    {
-      id: 3,
-      title: 'HTTP Served Without HTTPS',
-      severity: 'Critical',
-      category: 'Encryption',
-      desc: 'mail.officebeacon.com is being served over unencrypted HTTP with no HTTPS redirect. All traffic — including credentials and session tokens — is transmitted in plain text.',
-      remediation: 'Configure a permanent 301 redirect from HTTP to HTTPS and enable HSTS on mail.officebeacon.com.',
-      breachRisk: 'Critical',
-      impact: 20,
-      findings: [
-        { status: 'Open', target: 'mail.officebeacon.com', port: '80', cvss: '9.1', observation: 'Mar 15, 2026' },
-      ]
-    },
-    {
-      id: 4,
-      title: 'Missing Content Security Policy (CSP)',
-      severity: 'High',
-      category: 'Security Headers',
-      desc: 'The Content-Security-Policy header is absent on all 11 scanned subdomains. Without CSP, browsers cannot restrict which resources may be loaded, enabling XSS and data injection attacks.',
-      remediation: 'Add a Content-Security-Policy header via your web server or CDN (e.g. Cloudflare) configuration. A restrictive policy like default-src \'self\' should be the baseline.',
-      breachRisk: 'High',
-      impact: 3,
-      findings: SUBDOMAINS.map((s, i) => ({ status: 'Open', target: s.subdomain, port: '443', cvss: '6.1', observation: 'Mar 15, 2026' }))
-    },
-    {
-      id: 5,
-      title: 'Missing HSTS Header',
-      severity: 'High',
-      category: 'Security Headers',
-      desc: 'Strict-Transport-Security is missing on all 11 subdomains despite TLS being present. Without HSTS, browsers may allow downgrade attacks, stripping HTTPS to HTTP.',
-      remediation: 'Set Strict-Transport-Security: max-age=31536000; includeSubDomains on your server or Cloudflare settings.',
-      breachRisk: 'High',
-      impact: 4,
-      findings: SUBDOMAINS.map(s => ({ status: 'Open', target: s.subdomain, port: '443', cvss: '6.5', observation: 'Mar 15, 2026' }))
-    },
-    {
-      id: 6,
-      title: 'Missing X-Frame-Options',
-      severity: 'Medium',
-      category: 'Security Headers',
-      desc: 'The X-Frame-Options header is absent on all subdomains, leaving them vulnerable to clickjacking attacks where a malicious page embeds your site in an invisible iframe.',
-      remediation: 'Add X-Frame-Options: SAMEORIGIN (or DENY) to all HTTP responses across all subdomains.',
-      breachRisk: 'Medium',
-      impact: 2,
-      findings: SUBDOMAINS.map(s => ({ status: 'Open', target: s.subdomain, port: '443', cvss: '5.4', observation: 'Mar 15, 2026' }))
-    },
-    {
-      id: 7,
-      title: 'Missing X-Content-Type-Options',
-      severity: 'Medium',
-      category: 'Security Headers',
-      desc: 'X-Content-Type-Options: nosniff is missing on all 11 subdomains. Without it, browsers may perform MIME-type sniffing, which can allow certain injection attacks via script execution.',
-      remediation: 'Add X-Content-Type-Options: nosniff globally via reverse proxy, CDN rules, or framework middleware.',
-      breachRisk: 'Medium',
-      impact: 2,
-      findings: SUBDOMAINS.map(s => ({ status: 'Open', target: s.subdomain, port: '443', cvss: '4.3', observation: 'Mar 15, 2026' }))
-    },
-  ],
-
-  'DNS Health': [
-    {
-      id: 8,
-      title: 'Missing NS Records',
-      severity: 'High',
-      category: 'DNS Config',
-      desc: 'NS (Name Server) records are missing on 8 out of 11 subdomains. This can cause DNS resolution failures and indicates subdomains may not have proper authoritative delegation, which can allow subdomain takeover.',
-      remediation: 'Review DNS zone configuration and ensure each subdomain has valid NS records pointing to authoritative servers. Verify with your registrar (ns09.domaincontrol.com found on some).',
-      breachRisk: 'High',
-      impact: 2,
-      findings: ['facilis','southafrica','mail','book','events','webmail','www','careers'].map(s => ({
-        status: 'Open', target: s + '.officebeacon.com', port: 'DNS', cvss: '6.8', observation: 'Mar 15, 2026'
-      }))
-    },
-    {
-      id: 9,
-      title: 'Missing TXT Records (SPF/DMARC)',
-      severity: 'High',
-      category: 'Email Security',
-      desc: 'TXT records are absent on all 11 subdomains. This means no SPF or DMARC policies are in place, leaving the domain open to email spoofing and phishing attacks using your brand.',
-      remediation: 'Publish SPF TXT record: v=spf1 include:_spf.hubspot.com -all. Add DMARC policy at _dmarc.officebeacon.com: v=DMARC1; p=quarantine; rua=mailto:dmarc@officebeacon.com.',
-      breachRisk: 'High',
-      impact: 1,
-      findings: SUBDOMAINS.map(s => ({ status: 'Open', target: s.subdomain, port: 'DNS', cvss: '7.1', observation: 'Mar 15, 2026' }))
-    },
-    {
-      id: 10,
-      title: 'Missing MX Records',
-      severity: 'Medium',
-      category: 'Email Security',
-      desc: 'MX records are absent on all 11 subdomains. While mail delivery to subdomains may not be intended, missing MX records can be a sign of incomplete DNS configuration and hinders email authentication enforcement.',
-      remediation: 'If mail is not intended for these subdomains, publish a null MX record (v=spf1 -all) to explicitly indicate this and prevent abuse.',
-      breachRisk: 'Medium',
-      impact: 1,
-      findings: SUBDOMAINS.map(s => ({ status: 'Open', target: s.subdomain, port: 'DNS', cvss: '5.0', observation: 'Mar 15, 2026' }))
-    },
-  ],
-
-  'TLS Security': [
-    {
-      id: 11,
-      title: 'Port 443 Open Without Active TLS',
-      severity: 'Critical',
-      category: 'TLS Config',
-      desc: 'mail.officebeacon.com has port 443 open but TLS is not active. Combined with HTTP being served without HTTPS, all mail-related traffic is fully exposed to interception. This is the most critical finding in this scan.',
-      remediation: 'Immediately provision a TLS certificate for mail.officebeacon.com (Let\'s Encrypt is free) and configure the mail server to terminate TLS on port 443. Also force HTTPS redirect on port 80.',
-      breachRisk: 'Critical',
-      impact: 20,
-      findings: [
-        { status: 'Open', target: 'mail.officebeacon.com', port: '443', cvss: '9.8', observation: 'Mar 15, 2026' },
-      ]
-    },
-  ],
-};
+interface SecurityFactor {
+  id: string;
+  count: number;
+  score: number;
+  icon: React.ReactNode;
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function SecurityReport() {
+function SecurityReportContent() {
   const searchParams = useSearchParams();
-  const domain = searchParams.get('domain') || 'officebeacon.com';
-  const [activeFactor, setActiveFactor] = useState('Network Security');
+  const domain = searchParams.get('domain') || 'unknown.com';
+  const scanId = searchParams.get('scan_id');
+
+  const [globalScore, setGlobalScore] = useState(0);
+  const [activeFactor, setActiveFactor] = useState('');
   const [activeIssueCategory, setActiveIssueCategory] = useState('All');
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
-  const [globalScore, setGlobalScore] = useState(DOMAIN_SCORE);
   const [isFixing, setIsFixing] = useState<number | null>(null);
   const [fixedIssues, setFixedIssues] = useState<number[]>([]);
   const mainRef = useRef<HTMLDivElement>(null);
 
-  // Counts for the threat intelligence panel
-  const totalVulns = securityFactors.reduce((sum, f) => sum + f.count, 0);
-  const criticalCount = Object.values(issuesData).flat().filter(i => i.severity === 'Critical').length;
-  const highCount = Object.values(issuesData).flat().filter(i => i.severity === 'High').length;
+  const [dynamicIssuesData, setDynamicIssuesData] = useState<Record<string, any[]>>({});
+  const [dynamicSecurityFactors, setDynamicSecurityFactors] = useState<SecurityFactor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [totalSubdomains, setTotalSubdomains] = useState(0);
+  const [scanDate, setScanDate] = useState('');
+
+  useEffect(() => {
+    if (!scanId) {
+      setIsLoading(false);
+      setReportError('No scan_id provided. Please start a scan first.');
+      return;
+    }
+    setIsLoading(true);
+    submitForAnalyzer(scanId).then((res) => {
+        setGlobalScore(res.domain_score);
+        
+        const newIssuesData: Record<string, any[]> = {};
+        const activeFactorCounts: Record<string, number> = {};
+        
+        // Count unique subdomains across all vulnerabilities
+        const allSubdomains = new Set<string>();
+        
+        // Add getPort helper for non-network issues
+        const getPort = (vulnName: string): string => {
+            if (vulnName.includes('443')) return '443';
+            if (vulnName.includes('HTTP without')) return '80';
+            if (vulnName.includes('port')) return 'Various';
+            return '—';
+        };
+
+        Object.entries(res.categorized_vulnerabilities).forEach(([factorName, vulnerabilities]) => {
+           const factorIssues: any[] = [];
+           let factorIssueCount = 0;
+           
+           Object.entries(vulnerabilities as Record<string, VulnerabilityEntry[]>).forEach(([vulnName, targets]) => {
+               const findingTargets = Array.isArray(targets) ? targets : [];
+               if (findingTargets.length === 0) return;
+               
+               findingTargets.forEach((t: VulnerabilityEntry) => allSubdomains.add(t.subdomain || (t as any)));
+               factorIssueCount++;
+               factorIssues.push({
+                   id: Math.floor(Math.random() * 1000000), 
+                   title: vulnName,
+                   severity: getSeverity(vulnName),
+                   category: factorName,
+                   desc: getDescription(vulnName, findingTargets.length),
+                   remediation: getRemediation(vulnName),
+                   breachRisk: getSeverity(vulnName),
+                   impact: getImpact(vulnName),
+                   findings: findingTargets.map((t: any) => ({
+                       status: 'Open',
+                       target: t.subdomain || (t as any),
+                       ip: t.ip || '—',
+                       port: t.port != null ? t.port : getPort(vulnName),
+                       severity: t.severity || getSeverity(vulnName),
+                       cvss: t.abuse_score ? (t.abuse_score / 10).toFixed(1) : getCVSS(vulnName),
+                       abuse_score: t.abuse_score,
+                       country: t.country,
+                       usage_type: t.usage_type,
+                       isp: t.isp,
+                       observation: new Date().toLocaleDateString()
+                   })).sort((a: any, b: any) => (b.abuse_score || 0) - (a.abuse_score || 0))
+               });
+           });
+           
+           if (factorIssues.length > 0) {
+               newIssuesData[factorName] = factorIssues;
+               activeFactorCounts[factorName] = factorIssueCount;
+           }
+        });
+        
+        // Build all 10 factors using API category_scores
+        const apiScores = res.category_scores || {};
+        const newFactors: SecurityFactor[] = ALL_FACTORS.map(f => ({
+          id: f.id,
+          count: activeFactorCounts[f.id] || 0,
+          score: apiScores[f.id] ?? 100,
+          icon: f.icon,
+        }));
+        
+        setTotalSubdomains(allSubdomains.size);
+        setScanDate(new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }));
+        setDynamicIssuesData(newIssuesData);
+        setDynamicSecurityFactors(newFactors);
+        
+        const firstActive = Object.keys(newIssuesData)[0];
+        if (firstActive) setActiveFactor(firstActive);
+        
+        setIsLoading(false);
+    }).catch((err: Error) => {
+        setReportError(err.message);
+        setIsLoading(false);
+    });
+  }, [scanId]);
+
+  // Counts
+  const totalVulns = dynamicSecurityFactors.reduce((sum, f) => sum + f.count, 0);
 
   const handleFix = (issueId: number) => {
     setIsFixing(issueId);
@@ -266,10 +169,11 @@ export default function SecurityReport() {
   };
 
   useEffect(() => {
+    if (isLoading || globalScore === 0) return;
     const ctx = gsap.context(() => {
       gsap.fromTo('.score-counter',
         { innerHTML: 0 },
-        { innerHTML: DOMAIN_SCORE, duration: 2, snap: { innerHTML: 1 }, ease: 'power2.out' }
+        { innerHTML: globalScore, duration: 2, snap: { innerHTML: 1 }, ease: 'power2.out' }
       );
       gsap.fromTo('.factor-bar',
         { scaleX: 0, transformOrigin: 'left center' },
@@ -277,19 +181,48 @@ export default function SecurityReport() {
       );
     }, mainRef);
     return () => ctx.revert();
-  }, []);
+  }, [isLoading, globalScore]);
 
-  const factorIssues = (issuesData[activeFactor] || []).filter(i => !fixedIssues.includes(i.id));
+  const factorIssues = (dynamicIssuesData[activeFactor] || []).filter(i => !fixedIssues.includes(i.id));
   const factorSubCategories = ['All', ...Array.from(new Set(factorIssues.map((i: any) => i.category)))];
   const activeIssues = activeIssueCategory === 'All'
     ? factorIssues
     : factorIssues.filter((i: any) => i.category === activeIssueCategory);
 
-  const activeFactorData = securityFactors.find(f => f.id === activeFactor);
-
   // Score label
   const scoreLabel = globalScore >= 90 ? 'Excellent' : globalScore >= 75 ? 'Fair' : globalScore >= 60 ? 'Needs Work' : 'Critical';
-  const scoreLabelColor = globalScore >= 90 ? 'text-green-500' : globalScore >= 75 ? 'text-orange-500' : 'text-red-500';
+
+  // ─── Loading State ─────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="min-h-full flex flex-col items-center justify-center bg-[#f8fbff] gap-6">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+        >
+          <Loader2 className="w-12 h-12 text-blue-600" />
+        </motion.div>
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Generating Security Report</h2>
+          <p className="text-sm text-slate-500 font-medium">Analyzing scan data for <span className="font-bold text-slate-700">{domain}</span></p>
+        </div>
+      </div>
+    );
+  }
+
+  if (reportError) {
+    return (
+      <div className="min-h-full flex flex-col items-center justify-center bg-[#f8fbff] gap-6">
+        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 border border-red-100">
+          <AlertCircle size={32} />
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Report Error</h2>
+          <p className="text-sm text-red-500 font-medium">{reportError}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full flex flex-col gap-6 p-8 bg-[#f8fbff]" ref={mainRef}>
@@ -302,7 +235,7 @@ export default function SecurityReport() {
             <span className="px-2 py-0.5 bg-slate-900 text-white text-[10px] font-black rounded border border-slate-800 uppercase tracking-tighter">Verified</span>
           </div>
           <p className="text-[11px] text-slate-500 font-black uppercase tracking-[0.2em]">
-            Tier-1 Security Assessment — {SUBDOMAINS.length} Subdomains Scanned · Last run: Mar 15, 2026
+            Tier-1 Security Assessment — {totalSubdomains} Subdomains Scanned · Last run: {scanDate}
           </p>
         </div>
         <div className="flex gap-2">
@@ -349,8 +282,6 @@ export default function SecurityReport() {
                 />
               </div>
             </div>
-
-
           </div>
         </div>
       </div>
@@ -361,7 +292,7 @@ export default function SecurityReport() {
           <h3 className="text-xl font-black text-slate-900 tracking-tight">Deep Analysis Explorer</h3>
           <div className="flex items-center space-x-2 text-xs font-bold text-slate-400">
             <span className="w-2 h-2 rounded-full bg-green-500" />
-            <span>Scan completed Mar 15, 2026 · 11 subdomains</span>
+            <span>Scan completed {scanDate} · {totalSubdomains} subdomains · {totalVulns} issues</span>
           </div>
         </div>
 
@@ -369,7 +300,7 @@ export default function SecurityReport() {
           {/* Vertical Factor Sidebar */}
           <div className="lg:col-span-3 bg-slate-50/50 border-r border-slate-50 p-6 space-y-2 overflow-y-auto">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 px-2">Security Factors</p>
-            {securityFactors.map((factor) => (
+            {dynamicSecurityFactors.map((factor) => (
               <motion.button
                 key={factor.id}
                 onClick={() => {
@@ -519,6 +450,19 @@ export default function SecurityReport() {
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Score impact:</span>
                                 <span className="text-[10px] font-bold text-red-500">−{issue.impact} pts</span>
                               </div>
+                              {/* IP & Port badges */}
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                                {issue.findings.slice(0, 4).map((f: any, fi: number) => (
+                                  <span key={fi} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-md text-[9px] font-bold text-slate-500">
+                                    <Globe size={9} className="text-slate-400" />
+                                    <span className="font-mono">{f.ip !== '—' ? f.ip : f.target}</span>
+                                    {f.port !== '—' && <span className="text-slate-300">:{f.port}</span>}
+                                  </span>
+                                ))}
+                                {issue.findings.length > 4 && (
+                                  <span className="text-[9px] font-black text-slate-400">+{issue.findings.length - 4} more</span>
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center space-x-3 ml-4">
                               <button
@@ -581,14 +525,14 @@ export default function SecurityReport() {
                     {[
                       { label: 'Threat Level',  value: selectedIssue.severity,   sub: 'Expert Calibration' },
                       { label: 'Breach Risk',   value: selectedIssue.breachRisk, sub: 'Vector Likelihood' },
-                      { label: 'Score Delta',   value: `-${selectedIssue.impact}`, sub: 'Per-Subdomain Impact' },
+                      { label: 'Score Delta',   value: `−${selectedIssue.impact}`, sub: 'Per-Subdomain Impact' },
                     ].map((card, i) => (
                       <div key={i} className="bg-slate-900 p-6 rounded-xl border border-slate-800 space-y-2 overflow-hidden relative">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12" />
                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">{card.label}</p>
                         <p className={`text-xl font-black ${
-                          card.value === 'Critical' || card.value.startsWith('-2') ? 'text-red-500' :
-                          card.value === 'High'     || card.value.startsWith('-1') ? 'text-orange-500' :
+                          card.value === 'Critical' || card.value.startsWith('−2') ? 'text-red-500' :
+                          card.value === 'High'     || card.value.startsWith('−1') ? 'text-orange-500' :
                           card.value === 'Medium'   ? 'text-yellow-400' : 'text-white'
                         }`}>{card.value}</p>
                         <p className="text-[8px] text-slate-600 font-extrabold uppercase tracking-tighter">{card.sub}</p>
@@ -625,8 +569,9 @@ export default function SecurityReport() {
                           <tr className="border-b border-slate-800 text-slate-500">
                             <th className="px-6 py-4 font-black uppercase tracking-widest">Status</th>
                             <th className="px-6 py-4 font-black uppercase tracking-widest">Target</th>
-                            <th className="px-6 py-4 font-black uppercase tracking-widest">Port</th>
-                            <th className="px-6 py-4 font-black uppercase tracking-widest">CVSS</th>
+                            <th className="px-6 py-4 font-black uppercase tracking-widest">IP Address</th>
+                            <th className="px-6 py-4 font-black uppercase tracking-widest">{activeFactor === 'IP Reputation' ? 'Abuse Score' : 'Port'}</th>
+                            <th className="px-6 py-4 font-black uppercase tracking-widest">{activeFactor === 'IP Reputation' ? 'Country' : 'CVSS'}</th>
                             <th className="px-6 py-4 font-black uppercase tracking-widest">Last Observed</th>
                             <th className="px-6 py-4 font-black uppercase tracking-widest text-right">Actions</th>
                           </tr>
@@ -640,8 +585,25 @@ export default function SecurityReport() {
                                 </span>
                               </td>
                               <td className="px-6 py-4 font-mono text-slate-400 text-[10px]">{f.target}</td>
-                              <td className="px-6 py-4 font-bold">{f.port}</td>
-                              <td className="px-6 py-4 font-black text-white">{f.cvss}</td>
+                              <td className="px-6 py-4 font-mono text-blue-400 text-[10px]">{f.ip}</td>
+                              <td className="px-6 py-4 font-bold">
+                                {activeFactor === 'IP Reputation' ? (
+                                  <span className={`px-2 py-0.5 rounded ${
+                                    f.abuse_score > 50 ? 'bg-red-500/20 text-red-500' :
+                                    f.abuse_score > 20 ? 'bg-orange-500/20 text-orange-500' :
+                                    'bg-green-500/20 text-green-500'
+                                  }`}>
+                                    {f.abuse_score}%
+                                  </span>
+                                ) : f.port}
+                              </td>
+                              <td className="px-6 py-4 font-black text-white">
+                                {activeFactor === 'IP Reputation' ? (
+                                  <span className="flex items-center space-x-1.5 font-bold text-slate-400">
+                                    <span className="text-[10px]">{f.country || '—'}</span>
+                                  </span>
+                                ) : f.cvss}
+                              </td>
                               <td className="px-6 py-4 text-slate-500 font-medium uppercase text-[10px]">{f.observation}</td>
                               <td className="px-6 py-4 text-right">
                                 <button
@@ -673,5 +635,116 @@ export default function SecurityReport() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── Helper functions for enriching vulnerability display ─────────────────────
+
+function getSeverity(vulnName: string): string {
+  const critical = ['HTTP without HTTPS', '443 open without TLS'];
+  const high = ['Missing CSP header', 'Missing HSTS header', 'Missing NS record', 'Missing TXT record', 'Risky port exposed', 'Malicious IP Activity Detected'];
+  const medium = ['Missing X-Frame-Options', 'Missing X-Content-Type-Options', 'Missing MX record', 'Unexpected open port'];
+  if (critical.some(k => vulnName.includes(k))) return 'Critical';
+  if (high.some(k => vulnName.includes(k))) return 'High';
+  if (medium.some(k => vulnName.includes(k))) return 'Medium';
+  return 'High';
+}
+
+function getImpact(vulnName: string): number {
+  const impactMap: Record<string, number> = {
+    'HTTP without HTTPS': 20,
+    '443 open without TLS': 20,
+    'Missing HSTS header': 4,
+    'Missing CSP header': 3,
+    'Missing X-Frame-Options': 2,
+    'Missing X-Content-Type-Options': 2,
+    'Missing NS record': 2,
+    'Missing TXT record': 1,
+    'Missing MX record': 1,
+    'Risky port exposed': 10,
+    'Unexpected open port': 8,
+    'Malicious IP Activity Detected': 15,
+  };
+  for (const [key, val] of Object.entries(impactMap)) {
+    if (vulnName.includes(key)) return val;
+  }
+  return 5;
+}
+
+function getDescription(vulnName: string, affectedCount: number): string {
+  const descriptions: Record<string, string> = {
+    'HTTP without HTTPS': `Traffic is served over unencrypted HTTP with no HTTPS redirect. All data — including credentials and session tokens — is transmitted in plain text. Affects ${affectedCount} host(s).`,
+    '443 open without TLS': `Port 443 is open but TLS is not properly configured. This means HTTPS connections will fail or expose traffic. Affects ${affectedCount} host(s).`,
+    'Missing CSP header': `The Content-Security-Policy header is absent, leaving browsers unable to restrict which resources may be loaded. This enables XSS and data injection attacks. Affects ${affectedCount} host(s).`,
+    'Missing HSTS header': `Strict-Transport-Security is missing despite TLS being present. Without HSTS, browsers may allow downgrade attacks, stripping HTTPS to HTTP. Affects ${affectedCount} host(s).`,
+    'Missing X-Frame-Options': `The X-Frame-Options header is absent, leaving sites vulnerable to clickjacking attacks where a malicious page embeds your site in an invisible iframe. Affects ${affectedCount} host(s).`,
+    'Missing X-Content-Type-Options': `X-Content-Type-Options: nosniff is missing. Without it, browsers may perform MIME-type sniffing, which can allow certain injection attacks. Affects ${affectedCount} host(s).`,
+    'Missing NS record': `NS (Name Server) records are missing, which can cause DNS resolution failures and indicates subdomains may not have proper authoritative delegation. Affects ${affectedCount} host(s).`,
+    'Missing TXT record': `TXT records are absent, meaning no SPF or DMARC policies are in place. This leaves the domain open to email spoofing and phishing attacks. Affects ${affectedCount} host(s).`,
+    'Missing MX record': `MX records are absent. While mail delivery may not be intended, missing MX records can indicate incomplete DNS configuration. Affects ${affectedCount} host(s).`,
+    'Risky port exposed': `A risky port (e.g., 8080, 3306, 21) is open and publicly accessible. These ports are frequently targeted by scanners and automated attack tools. Affects ${affectedCount} host(s).`,
+    'Unexpected open port': `An unexpected port is open. Ports not explicitly needed increase the attack surface and may indicate running services that should be firewalled. Affects ${affectedCount} host(s).`,
+    'Malicious IP Activity Detected': `Infrastructure is associated with IPs known for malicious activity (spam, hacking, DDoS). We detected ${affectedCount} high-risk IP(s) in your configuration.`,
+  };
+  for (const [key, val] of Object.entries(descriptions)) {
+    if (vulnName.includes(key)) return val;
+  }
+  return `Automated vulnerability finding: ${vulnName}. Affects ${affectedCount} host(s). Review findings for details.`;
+}
+
+function getRemediation(vulnName: string): string {
+  const remediations: Record<string, string> = {
+    'HTTP without HTTPS': 'Configure a permanent 301 redirect from HTTP to HTTPS and enable HSTS on all affected hosts.',
+    '443 open without TLS': 'Provision a TLS certificate (Let\'s Encrypt is free) and configure the server to terminate TLS on port 443. Force HTTPS redirect on port 80.',
+    'Missing CSP header': 'Add a Content-Security-Policy header via your web server or CDN. A restrictive policy like default-src \'self\' should be the baseline.',
+    'Missing HSTS header': 'Set Strict-Transport-Security: max-age=31536000; includeSubDomains on your server or CDN settings.',
+    'Missing X-Frame-Options': 'Add X-Frame-Options: SAMEORIGIN (or DENY) to all HTTP responses across all subdomains.',
+    'Missing X-Content-Type-Options': 'Add X-Content-Type-Options: nosniff globally via reverse proxy, CDN rules, or framework middleware.',
+    'Missing NS record': 'Review DNS zone configuration and ensure each subdomain has valid NS records pointing to authoritative servers.',
+    'Missing TXT record': 'Publish SPF TXT record: v=spf1 include:... -all. Add DMARC policy at _dmarc: v=DMARC1; p=quarantine.',
+    'Missing MX record': 'If mail is not intended for these subdomains, publish a null MX record to explicitly indicate this and prevent abuse.',
+    'Risky port exposed': 'Close the risky port on all affected hosts or restrict access via firewall rules to trusted IPs only.',
+    'Unexpected open port': 'Audit the open port and close it if the running service is not needed. Otherwise restrict access via firewall.',
+    'Malicious IP Activity Detected': 'Contact your infrastructure provider to rotate IPs or investigate potential account compromise. Ensure all egress/ingress is restricted to legitimate traffic only.',
+  };
+  for (const [key, val] of Object.entries(remediations)) {
+    if (vulnName.includes(key)) return val;
+  }
+  return 'Review and remediate immediately. Consult your security team for detailed remediation steps.';
+}
+
+function getPort(vulnName: string): string {
+  if (vulnName.includes('443')) return '443';
+  if (vulnName.includes('HTTP without')) return '80';
+  if (vulnName.includes('port')) return 'Various';
+  return 'N/A';
+}
+
+function getCVSS(vulnName: string): string {
+  const cvssMap: Record<string, string> = {
+    'HTTP without HTTPS': '9.1',
+    '443 open without TLS': '9.8',
+    'Missing CSP header': '6.1',
+    'Missing HSTS header': '6.5',
+    'Missing X-Frame-Options': '5.4',
+    'Missing X-Content-Type-Options': '4.3',
+    'Missing NS record': '6.8',
+    'Missing TXT record': '7.1',
+    'Missing MX record': '5.0',
+    'Risky port exposed': '7.5',
+    'Unexpected open port': '6.5',
+    'Malicious IP Activity Detected': '8.2',
+  };
+  for (const [key, val] of Object.entries(cvssMap)) {
+    if (vulnName.includes(key)) return val;
+  }
+  return 'N/A';
+}
+
+export default function SecurityReport() {
+  return (
+    <Suspense fallback={<div className="min-h-full flex items-center justify-center bg-[#f8fbff] text-slate-500 font-bold uppercase tracking-widest text-sm">Loading Report...</div>}>
+      <SecurityReportContent />
+    </Suspense>
   );
 }
