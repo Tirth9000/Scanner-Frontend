@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
@@ -17,7 +17,7 @@ import { useSearchParams } from 'next/navigation';
 import { getLatestAssessment } from '@/api/assessment';
 import { AssessmentResult } from '@/components/AssessmentResult';
 
-export default function AssessmentOverview() {
+function AssessmentOverviewContent() {
   const searchParams = useSearchParams();
   const showSuccess = searchParams.get('assessment_complete') === 'true';
   const [assessment, setAssessment] = useState<any>(null);
@@ -144,5 +144,13 @@ export default function AssessmentOverview() {
       </div>
 
     </div>
+  );
+}
+
+export default function AssessmentOverview() {
+  return (
+    <Suspense fallback={<div className="min-h-full flex items-center justify-center p-8 text-slate-500 uppercase font-bold tracking-widest text-xs">Loading Dashboard...</div>}>
+      <AssessmentOverviewContent />
+    </Suspense>
   );
 }

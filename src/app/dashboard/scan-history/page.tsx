@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { History, Globe, ArrowRight, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { History, Globe, ArrowRight, ShieldCheck, AlertTriangle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { getScanHistory } from '@/api/scanner';
 
@@ -49,7 +49,7 @@ export default function ScanHistoryPage() {
             transition={{ delay: i * 0.05 }}
           >
             <Link 
-              href={`/dashboard/report?scan_id=${scan.scanId}&domain=${scan.domain}`}
+              href={scan.status === 'Pending' ? `/dashboard/active-scan?scan_id=${scan.scanId}&domain=${scan.domain}` : `/dashboard/report?scan_id=${scan.scanId}&domain=${scan.domain}`}
               className="group flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all"
             >
               <div className="flex items-center space-x-6">
@@ -65,19 +65,25 @@ export default function ScanHistoryPage() {
               <div className="flex items-center space-x-12">
                 <div className="text-right">
                   <div className="flex items-center space-x-2 justify-end mb-1">
-                    {scan.status === 'Healthy' ? (
+                    {scan.status === 'Pending' ? (
+                      <Loader2 size={14} className="text-blue-500 animate-spin" />
+                    ) : scan.status === 'Healthy' ? (
                       <ShieldCheck size={14} className="text-green-500" />
                     ) : (
                       <AlertTriangle size={14} className="text-orange-500" />
                     )}
-                    <span className="text-xs font-black text-slate-900">{scan.score}</span>
+                    <span className="text-xs font-black text-slate-900">
+                      {scan.status === 'Pending' ? 'In Progress' : scan.score}
+                    </span>
                   </div>
+                  {scan.status !== 'Pending' && (
                   <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                     <div 
                       className={`h-full ${scan.score > 80 ? 'bg-green-500' : scan.score > 60 ? 'bg-orange-500' : 'bg-red-500'}`} 
                       style={{ width: `${scan.score}%` }}
                     />
                   </div>
+                  )}
                 </div>
                 <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-all">
                   <ArrowRight size={18} />

@@ -122,7 +122,7 @@ function SecurityReportContent() {
                        usage_type: t.usage_type,
                        isp: t.isp,
                        observation: new Date().toLocaleDateString()
-                   }))
+                   })).sort((a: any, b: any) => (b.abuse_score || 0) - (a.abuse_score || 0))
                });
            });
            
