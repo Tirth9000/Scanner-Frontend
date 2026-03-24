@@ -14,29 +14,57 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { getLatestAssessment } from '@/api/assessment';
+import { getLatestAssessment, getAssessmentHistory } from '@/api/assessment';
 import { AssessmentResult } from '@/components/AssessmentResult';
+import { ScoreCircularGauge } from '@/components/charts/ScoreCircularGauge';
+import { RiskRadarChart } from '@/components/charts/RiskRadarChart';
+import { ScoreTrendChart } from '@/components/charts/ScoreTrendChart';
 
 export default function AssessmentOverview() {
   const searchParams = useSearchParams();
   const showSuccess = searchParams.get('assessment_complete') === 'true';
   const [assessment, setAssessment] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchLatest = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getLatestAssessment();
-        if (data && data.summary) {
-          setAssessment(data);
+        const [latestData, historyData] = await Promise.all([
+          getLatestAssessment(),
+          getAssessmentHistory(10)
+        ]);
+
+        if (latestData && latestData.summary) {
+          setAssessment(latestData);
         }
+
+        if (Array.isArray(historyData)) {
+          // Format history data for the trend chart
+          const formattedHistory = historyData.map(h => ({
+            date: new Date(h.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            score: h.summary?.score || 0
+          })).reverse();
+
+          // If the latest assessment isn't in history yet, add it to the trend
+          if (latestData && latestData.summary && !historyData.some(h => h._id === latestData._id)) {
+            formattedHistory.push({
+              date: new Date(latestData.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              score: latestData.summary.score
+            });
+          }
+
+          setHistory(formattedHistory);
+        }
+
+
       } catch (err) {
-        console.error('Failed to fetch latest assessment:', err);
+        console.error('Failed to fetch assessment data:', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchLatest();
+    fetchData();
   }, []);
 
   return (
@@ -79,21 +107,31 @@ export default function AssessmentOverview() {
             <p className="text-[10px] font-black uppercase tracking-widest">Synchronizing Security Data...</p>
           </div>
         ) : assessment ? (
-          <div className="space-y-8">
+          <div className="space-y-8 pb-12">
              <AssessmentResult summary={assessment.summary} />
              
-             {/* Secondary Analytics Placeholder (Real data will go here if added) */}
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 opacity-40 grayscale pointer-events-none">
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 h-64 flex flex-col items-center justify-center text-center gap-4">
-                   <Shield className="text-blue-500" size={32} />
-                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Compliance Trends</p>
+             {/* Secondary Analytics */}
+             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Portfolio Score & Radar Chart */}
+                <div className="lg:col-span-12 bg-white p-8 rounded-[2.5rem] border border-slate-100 flex flex-col md:flex-row gap-8 items-center min-h-[350px]">
+                   <div className="w-full md:w-1/3 h-full">
+                      <ScoreCircularGauge 
+                        score={assessment.summary.score} 
+                        grade={assessment.summary.grade} 
+                      />
+                   </div>
+                   <div className="w-full md:w-2/3 h-full min-h-[300px]">
+                      <RiskRadarChart data={[]} /> {/* Using default data for now or mapping answers */}
+                   </div>
                 </div>
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 h-64 flex flex-col items-center justify-center text-center gap-4">
-                   <Zap className="text-orange-500" size={32} />
-                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Risk Mitigation</p>
+
+                {/* Score Trend */}
+                <div className="lg:col-span-12 bg-white p-8 rounded-[2.5rem] border border-slate-100 min-h-[350px]">
+                   <ScoreTrendChart history={history} />
                 </div>
              </div>
           </div>
+
         ) : (
           <motion.div 
             initial={{ opacity: 0, scale: 0.98 }}
@@ -142,6 +180,7 @@ export default function AssessmentOverview() {
           </motion.div>
         )}
       </div>
+
 
     </div>
   );

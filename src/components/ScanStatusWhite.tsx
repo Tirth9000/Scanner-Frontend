@@ -54,7 +54,7 @@ export const ScanStatusWhite: React.FC<ScanStatusWhiteProps> = ({ domain }) => {
 
   useEffect(() => {
     let currentIdx = 0;
-    const intervalTime = 1000; 
+    const intervalTime = 600; 
 
     const scrollInterval = setInterval(() => {
       if (currentIdx < stages.length - 1) {
