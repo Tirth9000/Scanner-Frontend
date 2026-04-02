@@ -1,10 +1,8 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 import { SidebarProvider } from '@/context/SidebarContext';
 import { MainLayout } from '@/components/MainLayout';
-
-const inter = Inter({ subsets: ['latin'] });
+import { Providers } from './providers';
 
 export const metadata: Metadata = {
   title: 'ShieldStat - Professional Security Analysis',
@@ -18,12 +16,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
-      <body className={`${inter.className} h-full bg-[#fcfcfc] text-slate-900 antialiased`}>
-        <SidebarProvider>
-          <MainLayout>
-            {children}
-          </MainLayout>
-        </SidebarProvider>
+      <body className={`h-full bg-[#fcfcfc] text-slate-900 antialiased font-sans`} suppressHydrationWarning>
+        <Providers>
+          <SidebarProvider>
+            <MainLayout>
+              {children}
+            </MainLayout>
+          </SidebarProvider>
+        </Providers>
       </body>
     </html>
   );
