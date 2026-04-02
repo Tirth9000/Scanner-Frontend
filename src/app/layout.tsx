@@ -16,6 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
+<<<<<<< HEAD
       <body className={`h-full bg-[#fcfcfc] text-slate-900 antialiased font-sans`} suppressHydrationWarning>
         <Providers>
           <SidebarProvider>
@@ -24,6 +25,14 @@ export default function RootLayout({
             </MainLayout>
           </SidebarProvider>
         </Providers>
+=======
+      <body className={`${inter.className} h-full bg-[#fcfcfc] text-slate-900 antialiased`} suppressHydrationWarning>
+        <SidebarProvider>
+          <MainLayout>
+            {children}
+          </MainLayout>
+        </SidebarProvider>
+>>>>>>> c4dc4ec2fc3bbb84b86fdee897449ae5db5c1478
       </body>
     </html>
   );
