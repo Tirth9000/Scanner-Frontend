@@ -1,13 +1,9 @@
-import Layout from "../components/Layout";
-
 function NewScan() {
   return (
-    <Layout>
-      {/* Hero */}
-      <div className="max-w-4xl mx-auto space-y-12">
+      <div className="mx-auto max-w-5xl space-y-12 px-6 py-12 md:px-10 md:py-20">
         <div className="text-center">
           <h1 className="text-5xl font-extrabold font-headline mb-4">
-            New Domain Scan
+            Scan Your Domain
           </h1>
 
           <p className="text-on-surface-variant max-w-2xl mx-auto text-lg">
@@ -57,7 +53,6 @@ function NewScan() {
           </div>
         </div>
       </div>
-    </Layout>
   );
 }
 
