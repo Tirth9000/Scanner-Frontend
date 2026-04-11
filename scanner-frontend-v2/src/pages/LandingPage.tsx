@@ -2,6 +2,9 @@
 import logo from "../assets/logo.svg"
 // @ts-ignore
 import isecurify_logo from "../assets/isecurify_logo.png"
+import { Link } from "react-router-dom";
+
+
 
 function LandingPage() {
   return (
@@ -22,11 +25,13 @@ function LandingPage() {
 
           <nav className="flex items-center gap-8">
             <div className="hidden md:flex items-center gap-6">
-                <button className="hover:bg-gray-700 hover:text-white rounded-xl px-3 py-2 transition">
-                    <a className="text-on-surface-variant font-medium hover:text-primary transition">
-                        Login
-                    </a>
-                </button>
+                <Link
+                  to="/auth"
+                  className="rounded-xl hover:bg-blue-700 hover:text-white px-3 py-2 text-on-surface-variant font-medium transition"
+                >
+                  Login
+                </Link>
+
             </div>
 
             <button className="text-white editorial-gradient text-on-primary px-6 py-2.5 rounded-lg font-semibold shadow-lg hover:brightness-110 transition">
