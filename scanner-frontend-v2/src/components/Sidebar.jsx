@@ -1,0 +1,114 @@
+import { Link, useLocation } from "react-router-dom";
+import logo from "../assets/logo.svg";
+
+function Sidebar({ isOpen, onToggle }) {
+  const location = useLocation();
+
+  const isActive = (path) => location.pathname === path;
+
+  const baseClass =
+    "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200";
+
+  const activeClass = "text-indigo-700 font-semibold bg-gray-200";
+
+  const inactiveClass = "text-gray-500 hover:text-indigo-600 hover:bg-gray-100";
+
+  return (
+    <aside
+      className={`relative flex h-full shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-slate-50 transition-all duration-300 ${
+        isOpen ? "w-72 px-6 py-8" : "w-0 border-r-0 px-0 py-0"
+      }`}
+      aria-hidden={!isOpen}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`absolute top-8 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 ${
+          isOpen ? "right-[-22px]" : "right-[-56px]"
+        }`}
+        aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
+      >
+        <span className="material-symbols-outlined">
+          {isOpen
+            ? "keyboard_double_arrow_left"
+            : "keyboard_double_arrow_right"}
+        </span>
+      </button>
+
+      <div
+        className={`flex h-full min-h-0 flex-col overflow-y-auto ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        {/* Logo */}
+        <div className="mb-10">
+          <div className="text-2xl font-bold text-indigo-900 font-headline">
+            <img
+              src={logo}
+              alt="Company Logo"
+              className="h-10 w-auto object-contain"
+            />
+          </div>
+        </div>
+
+        {/* Menu */}
+        <nav className="flex-1 space-y-2">
+          <Link
+            to="/assessment"
+            className={`${baseClass} ${isActive("/assessment") ? activeClass : inactiveClass}`}
+          >
+            <span className="material-symbols-outlined">security</span>
+            <span>Assessment</span>
+          </Link>
+
+          <Link
+            to="/scan"
+            className={`${baseClass} ${isActive("/scan") ? activeClass : inactiveClass}`}
+          >
+            <span className="material-symbols-outlined">radar</span>
+            <span>New Scan</span>
+          </Link>
+
+          <Link
+            to="/history"
+            className={`${baseClass} ${isActive("/history") ? activeClass : inactiveClass}`}
+          >
+            <span className="material-symbols-outlined">history</span>
+            <span>Scan History</span>
+          </Link>
+
+          <Link
+            to="/malware"
+            className={`${baseClass} ${isActive("/malware") ? activeClass : inactiveClass}`}
+          >
+            <span className="material-symbols-outlined">bug_report</span>
+            <span>Malware Scan</span>
+          </Link>
+
+          <Link
+            to="/malware-history"
+            className={`${baseClass} ${isActive("/malware-history") ? activeClass : inactiveClass}`}
+          >
+            <span className="material-symbols-outlined">manage_search</span>
+            <span>Malware Scan History</span>
+          </Link>
+        </nav>
+
+        {/* Bottom */}
+        <div className="space-y-2 border-t border-slate-200 pt-8">
+          <Link to="/profile" className={`${baseClass} ${inactiveClass}`}>
+            <span className="material-symbols-outlined">account_circle</span>
+            <span>Profile</span>
+          </Link>
+
+          <Link to="/settings" className={`${baseClass} ${inactiveClass}`}>
+            <span className="material-symbols-outlined">settings</span>
+            <span>Settings</span>
+          </Link>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+export default Sidebar;
