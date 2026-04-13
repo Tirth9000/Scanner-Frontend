@@ -37,7 +37,7 @@ function AuthPage() {
             </div>
 
             <h1 className="text-4xl font-extrabold font-headline text-on-surface">
-              The Sentinel
+            Domain Security Scanner
             </h1>
 
             <p className="text-xs uppercase tracking-widest mt-2 text-on-surface-variant">
