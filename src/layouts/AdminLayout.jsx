@@ -142,15 +142,30 @@ function AdminLayout() {
       {/* Main area with top nav + outlet */}
       <div className="flex-1 ml-0">
         <header className="flex justify-between items-center w-full px-6 py-4 bg-surface">
-              <div className="text-center">
-                <p className="text-sm font-bold">Alex Sentinel</p>
-                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
-                  Administrator
-                </p>
-              </div>
-              <div className="flex items-center gap-3 ">
-                <HeaderButtons />
-              </div>
+          <div className="flex items-center gap-4">
+            {!isOpen && (
+              <button
+                type="button"
+                onClick={onToggle}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                aria-label="Open sidebar"
+              >
+                <span className="material-symbols-outlined">
+                  keyboard_double_arrow_right
+                </span>
+              </button>
+            )}
+
+            <div className="text-center">
+              <p className="text-sm font-bold">Alex Sentinel</p>
+              <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
+                Administrator
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 ">
+            <HeaderButtons />
+          </div>
         </header>
 
         <main className="p-3">
