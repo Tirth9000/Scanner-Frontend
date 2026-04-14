@@ -31,11 +31,12 @@ function Sidebar({ isOpen, onToggle }) {
   const isActive = (path) => location.pathname === path;
 
   const baseClass =
-    "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200";
+    "relative flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 overflow-hidden";
 
-  const activeClass = "text-indigo-700 font-semibold bg-gray-200";
+  const activeClass = "text-indigo-700 font-semibold bg-indigo-50 shadow-sm";
 
-  const inactiveClass = "text-gray-500 hover:text-indigo-600 hover:bg-gray-100";
+  const inactiveClass =
+    "text-gray-500 hover:text-indigo-600 hover:bg-indigo-50";
 
   return (
     <aside
@@ -81,6 +82,13 @@ function Sidebar({ isOpen, onToggle }) {
             to="/assessment"
             className={`${baseClass} ${isActive("/assessment") ? activeClass : inactiveClass}`}
           >
+            <span
+              className={
+                isActive("/assessment")
+                  ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
+                  : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
+              }
+            />
             <span className="material-symbols-outlined">security</span>
             <span>Assessment</span>
           </Link>
@@ -94,6 +102,13 @@ function Sidebar({ isOpen, onToggle }) {
                 to={scanPath}
                 className={`${baseClass} ${isActive(scanPath) ? activeClass : inactiveClass}`}
               >
+                <span
+                  className={
+                    isActive(scanPath)
+                      ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
+                      : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
+                  }
+                />
                 <span className="material-symbols-outlined">radar</span>
                 <span>{scanLabel}</span>
               </Link>
@@ -104,6 +119,13 @@ function Sidebar({ isOpen, onToggle }) {
             to="/history"
             className={`${baseClass} ${isActive("/history") ? activeClass : inactiveClass}`}
           >
+            <span
+              className={
+                isActive("/history")
+                  ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
+                  : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
+              }
+            />
             <span className="material-symbols-outlined">history</span>
             <span>Scan History</span>
           </Link>
@@ -121,6 +143,13 @@ function Sidebar({ isOpen, onToggle }) {
                 to={malwarePath}
                 className={`${baseClass} ${isActive(malwarePath) ? activeClass : inactiveClass}`}
               >
+                <span
+                  className={
+                    isActive(malwarePath)
+                      ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
+                      : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
+                  }
+                />
                 <span className="material-symbols-outlined">bug_report</span>
                 <span>{malwareLabel}</span>
               </Link>
@@ -131,6 +160,13 @@ function Sidebar({ isOpen, onToggle }) {
             to="/malware-history"
             className={`${baseClass} ${isActive("/malware-history") ? activeClass : inactiveClass}`}
           >
+            <span
+              className={
+                isActive("/malware-history")
+                  ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
+                  : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
+              }
+            />
             <span className="material-symbols-outlined">manage_search</span>
             <span>Malware Scan History</span>
           </Link>

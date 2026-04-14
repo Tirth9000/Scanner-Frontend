@@ -2,11 +2,18 @@
 import logo from "../assets/logo.svg"
 // @ts-ignore
 import isecurify_logo from "../assets/isecurify_logo.png"
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 
 
 function LandingPage() {
+  const navigate = useNavigate();
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    navigate("/auth", {replace: true});
+  }
+
   return (
     <div className="bg-surface text-on-surface min-h-screen flex flex-col font-body">
       {/* Navbar */}
@@ -22,11 +29,11 @@ function LandingPage() {
           </div>
 
           <nav className="flex items-center gap-8">
-            <button className="text-white editorial-gradient text-on-primary px-6 py-2.5 rounded-lg font-semibold shadow-lg hover:brightness-110 transition">
-              <Link to="/auth">
-                LOGIN
-              </Link>
-            </button>
+            <Link to="/auth">
+              <button className="text-white editorial-gradient text-on-primary px-6 py-2.5 rounded-lg font-semibold shadow-lg hover:brightness-110 transition">
+                  LOGIN
+              </button>
+            </Link>
           </nav>
         </div>
       </header>
@@ -37,7 +44,7 @@ function LandingPage() {
         <div className="mb-12 relative">
           <div className="absolute inset-0 bg-gray-500 blur-3xl rounded-full scale-150"></div>
 
-          <div className="bg-white relative w-16 h-16 bg-surface-container-lowest rounded-full flex items-center justify-center pulse-glow">
+          <div className="bg-white relative w-16 h-16 rounded-full flex items-center justify-center pulse-glow">
             <img
               src={isecurify_logo}
               alt="Company Logo"
@@ -60,7 +67,7 @@ function LandingPage() {
 
         {/* Input */}
         <div className="w-full max-w-2xl">
-          <form className="relative group">
+          <form className="relative group" onSubmit={handleSubmit}>
             <div className="absolute -inset-1 bg-gradient-to-r from-primary/10 to-tertiary/10 rounded-2xl blur opacity-25 group-focus-within:opacity-100 transition duration-1000"></div>
 
             <div className="relative flex items-center bg-surface-container-lowest rounded-2xl p-2 shadow-sm border border-outline-variant/10 focus-within:border-primary/20">

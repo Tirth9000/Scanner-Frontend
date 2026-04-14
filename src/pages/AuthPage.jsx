@@ -12,21 +12,15 @@ function AuthPage() {
   const [signupShowConfirmPassword, setSignupShowConfirmPassword] = useState(false);
 
   return (
-    <div className="max-h-screen flex flex-col bg-background-light font-body">
+    <div className="max-h-full flex flex-col bg-background-light font-body">
 
-      <main className="flex-grow flex items-center justify-center px-6 py-12 relative overflow-hidden">
+      <main className="flex-grow flex items-center justify-center px-auto py-5 overflow-hidden">
 
-        {/* Background */}
-        <div className="absolute inset-0 opacity-20 pointer-events-none">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px]" />
-          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-200/10 rounded-full blur-[100px]" />
-        </div>
-
-        <div className="w-full max-w-lg z-10">
+        <div className="w-screen max-w-lg">
 
           {/* Brand */}
           <div className="text-center mb-10">
-            <div className="mb-6 flex justify-center">
+            <div className="mb-3 flex justify-center">
               <div className="bg-white p-4 rounded-xl shadow">
                 <img 
                   src={isecurify_logo} 
