@@ -262,9 +262,8 @@ function NewScan() {
           </h1>
 
           <p className="mx-auto max-w-3xl text-lg text-slate-600">
-            Deploy an autonomous audit of your digital perimeter. Enter a
-            domain to begin high-fidelity asset discovery and vulnerability
-            profiling.
+            Deploy an autonomous audit of your digital perimeter. Enter a domain
+            to begin high-fidelity asset discovery and vulnerability profiling.
           </p>
         </div>
 
@@ -313,7 +312,6 @@ function NewScan() {
             />
           ))}
         </div>
-
       </div>
     </div>
   );

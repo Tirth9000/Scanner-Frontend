@@ -17,10 +17,10 @@ function Sidebar({ isOpen, onToggle }) {
   useEffect(() => {
     const onComplete = () => setMalwareScanComplete(true);
 
-  const onNewComplete = () => setNewScanComplete(true);
+    const onNewComplete = () => setNewScanComplete(true);
 
-  window.addEventListener("malware-scan-complete", onComplete);
-  window.addEventListener("new-scan-complete", onNewComplete);
+    window.addEventListener("malware-scan-complete", onComplete);
+    window.addEventListener("new-scan-complete", onNewComplete);
 
     return () => {
       window.removeEventListener("malware-scan-complete", onComplete);
