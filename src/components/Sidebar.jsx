@@ -1,8 +1,32 @@
 import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import logo from "../assets/logo.svg";
 
 function Sidebar({ isOpen, onToggle }) {
   const location = useLocation();
+
+  // Keep the completion flag in-memory so it resets on full page reload.
+  const [malwareScanComplete, setMalwareScanComplete] = useState(() =>
+    Boolean(window.__malwareScanCompleted),
+  );
+
+  const [newScanComplete, setNewScanComplete] = useState(() =>
+    Boolean(window.__newScanCompleted),
+  );
+
+  useEffect(() => {
+    const onComplete = () => setMalwareScanComplete(true);
+
+    const onNewComplete = () => setNewScanComplete(true);
+
+    window.addEventListener("malware-scan-complete", onComplete);
+    window.addEventListener("new-scan-complete", onNewComplete);
+
+    return () => {
+      window.removeEventListener("malware-scan-complete", onComplete);
+      window.removeEventListener("new-scan-complete", onNewComplete);
+    };
+  }, []);
 
   const isActive = (path) => location.pathname === path;
 
@@ -61,13 +85,20 @@ function Sidebar({ isOpen, onToggle }) {
             <span>Assessment</span>
           </Link>
 
-          <Link
-            to="/scan"
-            className={`${baseClass} ${isActive("/scan") ? activeClass : inactiveClass}`}
-          >
-            <span className="material-symbols-outlined">radar</span>
-            <span>New Scan</span>
-          </Link>
+          {(() => {
+            const scanPath = newScanComplete ? "/scan-dashboard" : "/scan";
+            const scanLabel = newScanComplete ? "Scan Dashboard" : "New Scan";
+
+            return (
+              <Link
+                to={scanPath}
+                className={`${baseClass} ${isActive(scanPath) ? activeClass : inactiveClass}`}
+              >
+                <span className="material-symbols-outlined">radar</span>
+                <span>{scanLabel}</span>
+              </Link>
+            );
+          })()}
 
           <Link
             to="/history"
@@ -77,13 +108,24 @@ function Sidebar({ isOpen, onToggle }) {
             <span>Scan History</span>
           </Link>
 
-          <Link
-            to="/malware"
-            className={`${baseClass} ${isActive("/malware") ? activeClass : inactiveClass}`}
-          >
-            <span className="material-symbols-outlined">bug_report</span>
-            <span>Malware Scan</span>
-          </Link>
+          {(() => {
+            const malwarePath = malwareScanComplete
+              ? "/malware-dashboard"
+              : "/malware";
+            const malwareLabel = malwareScanComplete
+              ? "Malware Dashboard"
+              : "Malware Scan";
+
+            return (
+              <Link
+                to={malwarePath}
+                className={`${baseClass} ${isActive(malwarePath) ? activeClass : inactiveClass}`}
+              >
+                <span className="material-symbols-outlined">bug_report</span>
+                <span>{malwareLabel}</span>
+              </Link>
+            );
+          })()}
 
           <Link
             to="/malware-history"

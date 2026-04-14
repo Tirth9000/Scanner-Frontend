@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const STAGES = [
   {
@@ -144,6 +145,8 @@ function NewScan() {
   const [stageStatuses, setStageStatuses] = useState(createPendingStageState);
   const [isScanRunning, setIsScanRunning] = useState(false);
   const trimmedDomain = domain.trim();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!isScanRunning) {
@@ -183,6 +186,16 @@ function NewScan() {
           dataCollection: COMPLETED,
         });
         setIsScanRunning(false);
+        try {
+          window.__newScanCompleted = true;
+          window.dispatchEvent(new Event("new-scan-complete"));
+
+          if (location && location.pathname === "/scan") {
+            navigate("/scan-dashboard");
+          }
+        } catch (e) {
+          // noop
+        }
       }, 7200),
     ];
 
@@ -249,9 +262,8 @@ function NewScan() {
           </h1>
 
           <p className="mx-auto max-w-3xl text-lg text-slate-600">
-            Deploy an autonomous audit of your digital perimeter. Enter a
-            domain to begin high-fidelity asset discovery and vulnerability
-            profiling.
+            Deploy an autonomous audit of your digital perimeter. Enter a domain
+            to begin high-fidelity asset discovery and vulnerability profiling.
           </p>
         </div>
 
@@ -300,7 +312,6 @@ function NewScan() {
             />
           ))}
         </div>
-
       </div>
     </div>
   );
