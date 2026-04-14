@@ -7,6 +7,8 @@ import Landing from "./pages/LandingPage";
 import Auth from "./pages/AuthPage";
 import Scan from "./pages/NewScan";
 import MalwareScan from "./pages/MalwareScan";
+import MalwareDashboard from "./pages/MalwareDashboard";
+import ScanDashboard from "./pages/ScanDashboard";
 import Assessment from "./pages/Assessment";
 import ScanHistory from "./pages/ScanHistory";
 import MalwareScanHistory from "./pages/MalwareScanHistory";
@@ -24,14 +26,15 @@ function App() {
       </Route>
 
       <Route path="/" element={<DashboardLayout />}>
+        <Route path="scan-dashboard" element={<ScanDashboard />} />
         <Route path="scan" element={<Scan />} />
         <Route path="history" element={<ScanHistory />} />
         <Route path="malware" element={<MalwareScan />} />
+        <Route path="malware-dashboard" element={<MalwareDashboard />} />
         <Route path="malware-history" element={<MalwareScanHistory />} />
         <Route path="assessment" element={<Assessment />} />
         <Route path="profile" element={<Profile />} />
       </Route>
-
     </Routes>
   );
 }
