@@ -1,5 +1,9 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import {
+  registerScanTask,
+  getProfile,
+  getWebSocketUrl,
+} from "../services/api";
 
 const STAGES = [
   {
@@ -28,11 +32,69 @@ const PENDING = "pending";
 const RUNNING = "running";
 const COMPLETED = "completed";
 
+const STAGE_ORDER = STAGES.map((s) => s.id);
+const SCANNED_DOMAINS_KEY = "scannedDomains";
+const scanSessionListeners = new Set();
+
+let activeScanSocket = null;
+
+// Maps WebSocket event names from the backend to frontend stage IDs
+const EVENT_TO_STAGE = {
+  domain_validation: "domainValidation",
+  subdomain_discovery: "subdomainDiscovery",
+  subdomain_filter: "subdomainFilter",
+  data_collection: "dataCollection",
+};
+
 function createPendingStageState() {
   return STAGES.reduce((accumulator, stage) => {
     accumulator[stage.id] = PENDING;
     return accumulator;
   }, {});
+}
+
+function createCompletedStageState() {
+  return STAGES.reduce((accumulator, stage) => {
+    accumulator[stage.id] = COMPLETED;
+    return accumulator;
+  }, {});
+}
+
+function createDefaultScanSession() {
+  return {
+    domain: "",
+    stageStatuses: createPendingStageState(),
+    isScanRunning: false,
+    scanError: null,
+  };
+}
+
+let scanSession = createDefaultScanSession();
+
+function getScanSession() {
+  return scanSession;
+}
+
+function setScanSession(nextSession) {
+  scanSession =
+    typeof nextSession === "function" ? nextSession(scanSession) : nextSession;
+  scanSessionListeners.forEach((listener) => listener(scanSession));
+}
+
+function subscribeToScanSession(listener) {
+  scanSessionListeners.add(listener);
+  return () => scanSessionListeners.delete(listener);
+}
+
+function resetScanSession() {
+  setScanSession(createDefaultScanSession());
+}
+
+function closeActiveScanSocket() {
+  if (activeScanSocket) {
+    activeScanSocket.close();
+    activeScanSocket = null;
+  }
 }
 
 function getStageCardClasses(status) {
@@ -81,6 +143,25 @@ function getStageLabelClasses(status) {
   }
 
   return "text-slate-400";
+}
+
+function saveScannedDomain(domain) {
+  const normalizedDomain = domain.trim();
+  if (!normalizedDomain) return;
+
+  const storedDomains = JSON.parse(
+    localStorage.getItem(SCANNED_DOMAINS_KEY) || "[]",
+  );
+  const nextDomains = [
+    normalizedDomain,
+    ...storedDomains.filter(
+      (storedDomain) =>
+        storedDomain.toLowerCase() !== normalizedDomain.toLowerCase(),
+    ),
+  ];
+
+  localStorage.setItem(SCANNED_DOMAINS_KEY, JSON.stringify(nextDomains));
+  localStorage.setItem("lastScannedDomain", normalizedDomain);
 }
 
 function StageCard({ stage, status }) {
@@ -141,113 +222,127 @@ function StageCard({ stage, status }) {
 }
 
 function NewScan() {
-  const [domain, setDomain] = useState("");
-  const [stageStatuses, setStageStatuses] = useState(createPendingStageState);
-  const [isScanRunning, setIsScanRunning] = useState(false);
+  const [scanSessionState, setScanSessionState] = useState(getScanSession);
+  const [domain, setDomain] = useState(() => getScanSession().domain);
+  const [orgId, setOrgId] = useState(null);
   const trimmedDomain = domain.trim();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const startingScanRef = useRef(false);
+  const { stageStatuses, isScanRunning, scanError } = scanSessionState;
 
+  // Fetch org_id on mount so we can open the WebSocket later
   useEffect(() => {
-    if (!isScanRunning) {
-      return undefined;
+    const token = localStorage.getItem("token");
+    if (token) {
+      getProfile(token)
+        .then((data) => setOrgId(data.org_id))
+        .catch(() => {});
     }
-
-    const stageTimers = [
-      window.setTimeout(() => {
-        setStageStatuses({
-          domainValidation: COMPLETED,
-          subdomainDiscovery: RUNNING,
-          subdomainFilter: PENDING,
-          dataCollection: PENDING,
-        });
-      }, 1800),
-      window.setTimeout(() => {
-        setStageStatuses({
-          domainValidation: COMPLETED,
-          subdomainDiscovery: COMPLETED,
-          subdomainFilter: RUNNING,
-          dataCollection: PENDING,
-        });
-      }, 3600),
-      window.setTimeout(() => {
-        setStageStatuses({
-          domainValidation: COMPLETED,
-          subdomainDiscovery: COMPLETED,
-          subdomainFilter: COMPLETED,
-          dataCollection: RUNNING,
-        });
-      }, 5400),
-      window.setTimeout(() => {
-        setStageStatuses({
-          domainValidation: COMPLETED,
-          subdomainDiscovery: COMPLETED,
-          subdomainFilter: COMPLETED,
-          dataCollection: COMPLETED,
-        });
-        setIsScanRunning(false);
-        try {
-          window.__newScanCompleted = true;
-          window.dispatchEvent(new Event("new-scan-complete"));
-
-          if (location && location.pathname === "/scan") {
-            navigate("/scan-dashboard");
-          }
-        } catch (e) {
-          // noop
-        }
-      }, 7200),
-    ];
-
-    return () => {
-      stageTimers.forEach((timer) => window.clearTimeout(timer));
-    };
-  }, [isScanRunning]);
-
-  /*
-  useEffect(() => {
-    const handleStageUpdate = (event) => {
-      const { stageId, status } = event.detail ?? {};
-
-      if (!stageId || ![PENDING, RUNNING, COMPLETED].includes(status)) {
-        return;
-      }
-
-      setStageStatuses((current) => ({
-        ...current,
-        [stageId]: status,
-      }));
-    };
-
-    window.addEventListener("scan-stage-update", handleStageUpdate);
-
-    window.updateScanStage = (stageId, status) => {
-      window.dispatchEvent(
-        new CustomEvent("scan-stage-update", {
-          detail: { stageId, status },
-        }),
-      );
-    };
-
-    return () => {
-      window.removeEventListener("scan-stage-update", handleStageUpdate);
-      delete window.updateScanStage;
-    };
   }, []);
-  */
+
+  useEffect(() => {
+    return subscribeToScanSession((nextSession) => {
+      setScanSessionState(nextSession);
+      if (nextSession.isScanRunning || !nextSession.domain) {
+        setDomain(nextSession.domain);
+      }
+    });
+  }, []);
 
   const handleStartScan = () => {
-    if (isScanRunning || !trimmedDomain) {
+    if (isScanRunning || startingScanRef.current || !trimmedDomain || !orgId) {
       return;
     }
 
-    setStageStatuses({
-      domainValidation: RUNNING,
-      subdomainDiscovery: PENDING,
-      subdomainFilter: PENDING,
-      dataCollection: PENDING,
+    startingScanRef.current = true;
+    const scanDomain = trimmedDomain;
+
+    closeActiveScanSocket();
+    setScanSession({
+      domain: scanDomain,
+      scanError: null,
+      isScanRunning: true,
+      stageStatuses: {
+        domainValidation: RUNNING,
+        subdomainDiscovery: PENDING,
+        subdomainFilter: PENDING,
+        dataCollection: PENDING,
+      },
     });
-    setIsScanRunning(true);
+
+    const token = localStorage.getItem("token");
+    const wsUrl = getWebSocketUrl(orgId);
+    const ws = new WebSocket(wsUrl);
+    activeScanSocket = ws;
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        const eventName = msg.event;
+
+        if (eventName === "scan_complete") {
+          setScanSession((current) => ({
+            ...current,
+            stageStatuses: createCompletedStageState(),
+            isScanRunning: false,
+            scanError: null,
+          }));
+          ws.close();
+          activeScanSocket = null;
+          saveScannedDomain(scanDomain);
+          resetScanSession();
+          return;
+        }
+
+        const completedStage = EVENT_TO_STAGE[eventName];
+        if (!completedStage) return;
+
+        setScanSession((current) => {
+          const updated = { ...current.stageStatuses };
+          updated[completedStage] = COMPLETED;
+          // Automatically set the next stage to RUNNING
+          const idx = STAGE_ORDER.indexOf(completedStage);
+          if (idx >= 0 && idx < STAGE_ORDER.length - 1) {
+            const next = STAGE_ORDER[idx + 1];
+            if (updated[next] === PENDING) {
+              updated[next] = RUNNING;
+            }
+          }
+          return { ...current, stageStatuses: updated };
+        });
+      } catch {
+        // ignore malformed messages
+      }
+    };
+
+    ws.onerror = () => {
+      setScanSession((current) => ({
+        ...current,
+        scanError: "Connection lost. Please try again.",
+        isScanRunning: false,
+        stageStatuses: createPendingStageState(),
+      }));
+      activeScanSocket = null;
+      startingScanRef.current = false;
+    };
+
+    // Wait for the socket to open, then fire the API call so we don't miss
+    // the first "domain_validation" event the server sends.
+    ws.onopen = async () => {
+      try {
+        await registerScanTask(scanDomain, token);
+        startingScanRef.current = false;
+      } catch (e) {
+        setScanSession((current) => ({
+          ...current,
+          scanError: e.message || "Failed to start scan.",
+          isScanRunning: false,
+          stageStatuses: createPendingStageState(),
+        }));
+        ws.close();
+        activeScanSocket = null;
+        startingScanRef.current = false;
+      }
+    };
   };
 
   const isInputDisabled = isScanRunning;
@@ -269,7 +364,7 @@ function NewScan() {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
           <label className="mb-4 block text-xs font-bold uppercase tracking-[0.26em] text-slate-600">
-            Domain Target
+            Target Domain
           </label>
 
           <div className="flex flex-col gap-4 md:flex-row">
@@ -283,7 +378,7 @@ function NewScan() {
                 value={domain}
                 onChange={(event) => setDomain(event.target.value)}
                 disabled={isInputDisabled}
-                placeholder="e.g. secure.nexus-corp.net"
+                placeholder="e.g. example.com"
                 className="w-full rounded-xl border border-slate-200 bg-slate-100 py-4 pl-12 pr-4 text-lg text-slate-900 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
                 required
               />
@@ -301,6 +396,13 @@ function NewScan() {
               </span>
             </button>
           </div>
+
+          {scanError && (
+            <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-medium text-red-700">
+              <span className="material-symbols-outlined text-base">error</span>
+              {scanError}
+            </div>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

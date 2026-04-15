@@ -13,7 +13,6 @@ import ScanDashboard from "./pages/ScanDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import AdminSubscription from "./pages/AdminSubscription";
 import Assessment from "./pages/Assessment";
-import ScanHistory from "./pages/ScanHistory";
 import MalwareScanHistory from "./pages/MalwareScanHistory";
 import Profile from "./pages/Profile";
 
@@ -31,7 +30,6 @@ function App() {
       <Route path="/" element={<DashboardLayout />}>
         <Route path="scan-dashboard" element={<ScanDashboard />} />
         <Route path="scan" element={<Scan />} />
-        <Route path="history" element={<ScanHistory />} />
         <Route path="malware" element={<MalwareScan />} />
         <Route path="malware-dashboard" element={<MalwareDashboard />} />
         <Route path="malware-history" element={<MalwareScanHistory />} />

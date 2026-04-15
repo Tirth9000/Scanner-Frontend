@@ -10,21 +10,13 @@ function Sidebar({ isOpen, onToggle }) {
     Boolean(window.__malwareScanCompleted),
   );
 
-  const [newScanComplete, setNewScanComplete] = useState(() =>
-    Boolean(window.__newScanCompleted),
-  );
-
   useEffect(() => {
     const onComplete = () => setMalwareScanComplete(true);
 
-    const onNewComplete = () => setNewScanComplete(true);
-
     window.addEventListener("malware-scan-complete", onComplete);
-    window.addEventListener("new-scan-complete", onNewComplete);
 
     return () => {
       window.removeEventListener("malware-scan-complete", onComplete);
-      window.removeEventListener("new-scan-complete", onNewComplete);
     };
   }, []);
 
@@ -93,41 +85,34 @@ function Sidebar({ isOpen, onToggle }) {
             <span>Assessment</span>
           </Link>
 
-          {(() => {
-            const scanPath = newScanComplete ? "/scan-dashboard" : "/scan";
-            const scanLabel = newScanComplete ? "Scan Dashboard" : "New Scan";
-
-            return (
-              <Link
-                to={scanPath}
-                className={`${baseClass} ${isActive(scanPath) ? activeClass : inactiveClass}`}
-              >
-                <span
-                  className={
-                    isActive(scanPath)
-                      ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
-                      : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
-                  }
-                />
-                <span className="material-symbols-outlined">radar</span>
-                <span>{scanLabel}</span>
-              </Link>
-            );
-          })()}
-
           <Link
-            to="/history"
-            className={`${baseClass} ${isActive("/history") ? activeClass : inactiveClass}`}
+            to="/scan"
+            className={`${baseClass} ${isActive("/scan") ? activeClass : inactiveClass}`}
           >
             <span
               className={
-                isActive("/history")
+                isActive("/scan")
                   ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
                   : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
               }
             />
-            <span className="material-symbols-outlined">history</span>
-            <span>Scan History</span>
+            <span className="material-symbols-outlined">radar</span>
+            <span>New Scan</span>
+          </Link>
+
+          <Link
+            to="/scan-dashboard"
+            className={`${baseClass} ${isActive("/scan-dashboard") ? activeClass : inactiveClass}`}
+          >
+            <span
+              className={
+                isActive("/scan-dashboard")
+                  ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
+                  : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
+              }
+            />
+            <span className="material-symbols-outlined">dashboard</span>
+            <span>Scan Dashboard</span>
           </Link>
 
           {(() => {

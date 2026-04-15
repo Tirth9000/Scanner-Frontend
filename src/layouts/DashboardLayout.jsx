@@ -13,7 +13,7 @@ function DashboardLayout() {
         onToggle={() => setIsSidebarOpen((current) => !current)}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         <Navbar
           isSidebarOpen={isSidebarOpen}
           onOpenSidebar={() => setIsSidebarOpen(true)}
