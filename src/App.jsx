@@ -6,7 +6,7 @@ import AdminLayout from "./layouts/AdminLayout";
 
 import Landing from "./pages/LandingPage";
 import Auth from "./pages/AuthPage";
-import Scan from "./pages/NewScan";
+import Scan from "./pages/AuditDomain";
 import MalwareScan from "./pages/MalwareScan";
 import MalwareDashboard from "./pages/MalwareDashboard";
 import ScanDashboard from "./pages/ScanDashboard";

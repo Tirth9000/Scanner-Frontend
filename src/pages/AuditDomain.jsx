@@ -351,15 +351,28 @@ function NewScan() {
   return (
     <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col justify-center px-6 py-12 md:px-10 md:py-16">
       <div className="mx-auto w-full max-w-5xl space-y-10">
-        <div className="text-center">
-          <h1 className="mb-4 font-headline text-5xl font-extrabold tracking-tight text-slate-900">
-            New Domain Scan
-          </h1>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="mb-4 font-headline text-5xl font-extrabold tracking-tight text-slate-900">
+              New Domain Scan
+            </h1>
 
-          <p className="mx-auto max-w-3xl text-lg text-slate-600">
-            Deploy an autonomous audit of your digital perimeter. Enter a domain
-            to begin high-fidelity asset discovery and vulnerability profiling.
-          </p>
+            <p className="mx-auto max-w-3xl text-lg text-slate-600">
+              Deploy an autonomous audit of your digital perimeter. Enter a
+              domain to begin high-fidelity asset discovery and vulnerability
+              profiling.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <a
+              href="/history"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              <span className="material-symbols-outlined">history</span>
+              <span>Scan History</span>
+            </a>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">

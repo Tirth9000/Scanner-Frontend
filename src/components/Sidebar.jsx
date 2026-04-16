@@ -72,36 +72,7 @@ function Sidebar({ isOpen, onToggle }) {
 
         {/* Menu */}
         <nav className="flex-1 space-y-2">
-          <Link
-            to="/assessment"
-            className={`${baseClass} ${isActive("/assessment") ? activeClass : inactiveClass}`}
-          >
-            <span
-              className={
-                isActive("/assessment")
-                  ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
-                  : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
-              }
-            />
-            <span className="material-symbols-outlined">security</span>
-            <span>Assessment</span>
-          </Link>
-
-          <Link
-            to="/scan"
-            className={`${baseClass} ${isActive("/scan") ? activeClass : inactiveClass}`}
-          >
-            <span
-              className={
-                isActive("/scan")
-                  ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
-                  : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
-              }
-            />
-            <span className="material-symbols-outlined">radar</span>
-            <span>New Scan</span>
-          </Link>
-
+          {/* Scan Dashboard (moved to top per request) */}
           <Link
             to="/scan-dashboard"
             className={`${baseClass} ${isActive("/scan-dashboard") ? activeClass : inactiveClass}`}
@@ -117,46 +88,74 @@ function Sidebar({ isOpen, onToggle }) {
             <span>Scan Dashboard</span>
           </Link>
 
-          {(() => {
-            const malwarePath = malwareScanComplete
-              ? "/malware-dashboard"
-              : "/malware";
-            const malwareLabel = malwareScanComplete
-              ? "Malware Dashboard"
-              : "Malware Scan";
-
-            return (
-              <Link
-                to={malwarePath}
-                className={`${baseClass} ${isActive(malwarePath) ? activeClass : inactiveClass}`}
-              >
-                <span
-                  className={
-                    isActive(malwarePath)
-                      ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
-                      : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
-                  }
-                />
-                <span className="material-symbols-outlined">bug_report</span>
-                <span>{malwareLabel}</span>
-              </Link>
-            );
-          })()}
-
           <Link
-            to="/malware-history"
-            className={`${baseClass} ${isActive("/malware-history") ? activeClass : inactiveClass}`}
+            to="/assessment"
+            className={`${baseClass} ${isActive("/assessment") ? activeClass : inactiveClass}`}
           >
             <span
               className={
-                isActive("/malware-history")
+                isActive("/assessment")
                   ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
                   : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
               }
             />
-            <span className="material-symbols-outlined">manage_search</span>
-            <span>Malware Scan History</span>
+            <span className="material-symbols-outlined">security</span>
+            <span>Assessment</span>
           </Link>
+
+          {/* New Scan always present */}
+          <Link
+            to="/scan"
+            className={`${baseClass} ${isActive("/scan") ? activeClass : inactiveClass}`}
+          >
+            <span
+              className={
+                isActive("/scan")
+                  ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
+                  : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
+              }
+            />
+            <span className="material-symbols-outlined">radar</span>
+            <span>Audit Domain</span>
+          </Link>
+
+          {/* Dashboard link moved to top of the menu */}
+
+          {/* Scan History moved into the New Scan page header per UX request */}
+
+          {/* Malware Scan link */}
+          <Link
+            to="/malware"
+            className={`${baseClass} ${isActive("/malware") ? activeClass : inactiveClass}`}
+          >
+            <span
+              className={
+                isActive("/malware")
+                  ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
+                  : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
+              }
+            />
+            <span className="material-symbols-outlined">bug_report</span>
+            <span>Malware Scan</span>
+          </Link>
+
+          {/* Malware Dashboard link (persistent) */}
+          <Link
+            to="/malware-dashboard"
+            className={`${baseClass} ${isActive("/malware-dashboard") ? activeClass : inactiveClass}`}
+          >
+            <span
+              className={
+                isActive("/malware-dashboard")
+                  ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
+                  : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
+              }
+            />
+            <span className="material-symbols-outlined">dashboard</span>
+            <span>Malware Dashboard</span>
+          </Link>
+
+          {/* Malware Scan History moved to the Malware page header per UX request */}
         </nav>
 
         {/* Bottom */}
