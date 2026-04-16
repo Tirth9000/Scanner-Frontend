@@ -1,17 +1,59 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 function ScanDashboard() {
+  const [mode, setMode] = useState(() => {
+    // If a malware scan just completed, default to malware view
+    if (window.__malwareScanCompleted) return "malware";
+    return window.__dashboardMode ?? "scan";
+  });
+
+  useEffect(() => {
+    const onMalwareComplete = () => {
+      try {
+        window.__dashboardMode = "malware";
+      } catch (e) {}
+      setMode("malware");
+    };
+
+    const onModeChanged = (e) => {
+      const v = e?.detail ?? window.__dashboardMode;
+      if (v) setMode(v);
+    };
+
+    window.addEventListener("malware-scan-complete", onMalwareComplete);
+    window.addEventListener("dashboard-mode-changed", onModeChanged);
+
+    return () => {
+      window.removeEventListener("malware-scan-complete", onMalwareComplete);
+      window.removeEventListener("dashboard-mode-changed", onModeChanged);
+    };
+  }, []);
+
+  const setDashboardMode = (m) => {
+    try {
+      window.__dashboardMode = m;
+      window.dispatchEvent(
+        new CustomEvent("dashboard-mode-changed", { detail: m }),
+      );
+    } catch (e) {
+      // noop
+    }
+    setMode(m);
+  };
+
   return (
     <div className="min-h-screen bg-surface">
       <main className="flex-1 overflow-y-auto pt-8 pb-16 px-12 max-w-[1600px] mx-auto w-full">
         {/* Dashboard Top Section */}
         <section className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
           {/* Security Score */}
-          <div className="md:col-span-5 lg:col-span-4 bg-surface-container-lowest p-8 rounded-xl shadow-sm relative overflow-hidden group border border-slate-200">
+          <div
+            className={`md:col-span-5 lg:col-span-4 p-8 rounded-xl shadow-sm relative overflow-hidden group border border-slate-200 ${mode === "malware" ? "bg-rose-50" : "bg-surface-container-lowest"}`}
+          >
             <div className="security-pulse absolute -right-10 -top-10 w-40 h-40 rounded-full group-hover:scale-110 transition-transform duration-700" />
             <div className="flex justify-between items-start mb-4">
               <span className="label-md uppercase tracking-widest text-on-surface-variant text-[11px] font-bold">
-                Security Grade
+                {mode === "malware" ? "Malware Score" : "Security Grade"}
               </span>
               <span
                 className="material-symbols-outlined text-primary"
@@ -21,8 +63,10 @@ function ScanDashboard() {
               </span>
             </div>
             <div className="flex items-baseline gap-2">
-              <h1 className="text-7xl font-extrabold font-headline tracking-tighter text-emerald-600">
-                84
+              <h1
+                className={`text-7xl font-extrabold font-headline tracking-tighter ${mode === "malware" ? "text-rose-600" : "text-emerald-600"}`}
+              >
+                {mode === "malware" ? 62 : 84}
               </h1>
               <span className="text-2xl text-on-surface-variant font-medium">
                 /100
@@ -35,8 +79,10 @@ function ScanDashboard() {
                   style={{ width: "84%" }}
                 />
               </div>
-              <span className="font-bold font-headline uppercase tracking-widest text-sm text-emerald-600">
-                Optimal
+              <span
+                className={`font-bold font-headline uppercase tracking-widest text-sm ${mode === "malware" ? "text-rose-600" : "text-emerald-600"}`}
+              >
+                {mode === "malware" ? "At Risk" : "Optimal"}
               </span>
             </div>
           </div>
@@ -44,8 +90,10 @@ function ScanDashboard() {
           {/* Domain Info */}
           <div className="md:col-span-7 lg:col-span-8 p-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary-container/50 text-on-primary-container rounded-full text-[11px] font-bold uppercase tracking-widest mb-4">
-              <span className="w-1.5 h-1.5 bg-primary rounded-full" /> Active
-              Scan Result
+              <span className="w-1.5 h-1.5 bg-primary rounded-full" />{" "}
+              {mode === "malware"
+                ? "Active Malware Result"
+                : "Active Scan Result"}
             </div>
             <div className="mb-8">
               <h2 className="text-6xl md:text-7xl font-extrabold font-headline tracking-tighter text-on-surface inline-block relative">
