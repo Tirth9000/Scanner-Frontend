@@ -1,382 +1,155 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { Link } from "react-router-dom";
 
 function ScanDashboard() {
-  const [mode, setMode] = useState(() => {
-    // If a malware scan just completed, default to malware view
-    if (window.__malwareScanCompleted) return "malware";
-    return window.__dashboardMode ?? "scan";
-  });
-
-  useEffect(() => {
-    const onMalwareComplete = () => {
-      try {
-        window.__dashboardMode = "malware";
-      } catch (e) {}
-      setMode("malware");
-    };
-
-    const onModeChanged = (e) => {
-      const v = e?.detail ?? window.__dashboardMode;
-      if (v) setMode(v);
-    };
-
-    window.addEventListener("malware-scan-complete", onMalwareComplete);
-    window.addEventListener("dashboard-mode-changed", onModeChanged);
-
-    return () => {
-      window.removeEventListener("malware-scan-complete", onMalwareComplete);
-      window.removeEventListener("dashboard-mode-changed", onModeChanged);
-    };
-  }, []);
-
-  const setDashboardMode = (m) => {
-    try {
-      window.__dashboardMode = m;
-      window.dispatchEvent(
-        new CustomEvent("dashboard-mode-changed", { detail: m }),
-      );
-    } catch (e) {
-      // noop
-    }
-    setMode(m);
-  };
-
   return (
     <div className="min-h-screen bg-surface">
       <main className="flex-1 overflow-y-auto pt-8 pb-16 px-12 max-w-[1600px] mx-auto w-full">
-        {/* Dashboard Top Section */}
-        <section className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-          {/* Security Score */}
-          <div
-            className={`md:col-span-5 lg:col-span-4 p-8 rounded-xl shadow-sm relative overflow-hidden group border border-slate-200 ${mode === "malware" ? "bg-rose-50" : "bg-surface-container-lowest"}`}
-          >
-            <div className="security-pulse absolute -right-10 -top-10 w-40 h-40 rounded-full group-hover:scale-110 transition-transform duration-700" />
-            <div className="flex justify-between items-start mb-4">
-              <span className="label-md uppercase tracking-widest text-on-surface-variant text-[11px] font-bold">
-                {mode === "malware" ? "Malware Score" : "Security Grade"}
-              </span>
-              <span
-                className="material-symbols-outlined text-primary"
-                style={{ fontVariationSettings: `"FILL" 1` }}
-              >
-                verified_user
-              </span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <h1
-                className={`text-7xl font-extrabold font-headline tracking-tighter ${mode === "malware" ? "text-rose-600" : "text-emerald-600"}`}
-              >
-                {mode === "malware" ? 62 : 84}
-              </h1>
-              <span className="text-2xl text-on-surface-variant font-medium">
-                /100
-              </span>
-            </div>
-            <div className="mt-6 flex items-center justify-between">
-              <div className="flex-grow h-1.5 bg-surface-container rounded-full overflow-hidden mr-4">
-                <div
-                  className="h-full bg-primary rounded-full"
-                  style={{ width: "84%" }}
-                />
-              </div>
-              <span
-                className={`font-bold font-headline uppercase tracking-widest text-sm ${mode === "malware" ? "text-rose-600" : "text-emerald-600"}`}
-              >
-                {mode === "malware" ? "At Risk" : "Optimal"}
-              </span>
-            </div>
-          </div>
+        <header className="mb-8">
+          <h1 className="text-3xl font-extrabold font-headline tracking-tight text-on-surface">
+            Security Overview
+          </h1>
+          <p className="text-on-surface-variant text-sm mt-2">
+            Comprehensive security posture across all scanning vectors.
+          </p>
+        </header>
 
-          {/* Domain Info */}
-          <div className="md:col-span-7 lg:col-span-8 p-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary-container/50 text-on-primary-container rounded-full text-[11px] font-bold uppercase tracking-widest mb-4">
-              <span className="w-1.5 h-1.5 bg-primary rounded-full" />{" "}
-              {mode === "malware"
-                ? "Active Malware Result"
-                : "Active Scan Result"}
+        <section className="flex flex-col gap-6 mb-12">
+          
+          {/* 1. Assessment Card (Horizontal) */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center gap-8">
+            <div className="w-20 h-20 shrink-0 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm">
+              <span className="material-symbols-outlined text-4xl">security</span>
             </div>
-            <div className="mb-8">
-              <h2 className="text-6xl md:text-7xl font-extrabold font-headline tracking-tighter text-on-surface inline-block relative">
-                <span className="relative z-10">example.com</span>
-                <span className="absolute -bottom-2 left-0 w-full h-4 bg-primary/10 -z-10 rounded-full" />
-              </h2>
-            </div>
-            <div className="flex flex-wrap gap-8">
-              <div className="flex flex-col">
-                <span className="text-[11px] uppercase tracking-widest text-on-surface-variant font-bold">
-                  IP Address
-                </span>
-                <span className="text-lg font-semibold text-on-surface">
-                  192.168.1.1
-                </span>
+            
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex flex-col md:flex-row items-center md:items-center gap-3 mb-2 justify-center md:justify-start">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-indigo-600">assignment_turned_in</span>
+                  <h3 className="font-bold text-slate-800 text-lg">Self Assessment Profile</h3>
+                </div>
+                <span className="px-3 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] uppercase font-bold tracking-widest rounded-full">Completed</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] uppercase tracking-widest text-on-surface-variant font-bold">
-                  Last Scan
-                </span>
-                <span className="text-lg font-semibold text-on-surface">
-                  Oct 28, 2023 - 14:30
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[11px] uppercase tracking-widest text-on-surface-variant font-bold">
-                  Environment
-                </span>
-                <span className="text-lg font-semibold text-on-surface">
-                  Production (AWS-East)
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Category Navigation */}
-        <section className="mb-8">
-          <h3 className="text-sm uppercase tracking-widest text-on-surface-variant font-bold mb-6">
-            Security Vectors
-          </h3>
-          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-            <button className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-indigo-600 text-white shadow-sm transition-all active:scale-95 border border-indigo-600">
-              <span
-                className="material-symbols-outlined text-lg"
-                style={{ fontVariationSettings: `"FILL" 1` }}
-              >
-                apps
-              </span>
-              <div className="flex flex-col text-left">
-                <span className="text-xs font-bold leading-tight">
-                  Application Security
-                </span>
-                <span className="text-[10px] opacity-80 font-medium">
-                  12 Findings
-                </span>
-              </div>
-            </button>
-            <button className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 shadow-sm transition-all active:scale-95 group">
-              <span className="material-symbols-outlined text-lg group-hover:text-indigo-600 transition-colors">
-                lan
-              </span>
-              <div className="flex flex-col text-left">
-                <span className="text-xs font-bold leading-tight text-slate-900">
-                  Network Security
-                </span>
-                <span className="text-[10px] text-slate-500 font-medium">
-                  3 Findings
-                </span>
-              </div>
-            </button>
-            <button className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 shadow-sm transition-all active:scale-95 group">
-              <span className="material-symbols-outlined text-lg group-hover:text-indigo-600 transition-colors">
-                public
-              </span>
-              <div className="flex flex-col text-left">
-                <span className="text-xs font-bold leading-tight text-slate-900">
-                  IP Reputation
-                </span>
-                <span className="text-[10px] text-slate-500 font-medium">
-                  Clean
-                </span>
-              </div>
-            </button>
-            <button className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 shadow-sm transition-all active:scale-95 group">
-              <span className="material-symbols-outlined text-lg group-hover:text-indigo-600 transition-colors">
-                mail
-              </span>
-              <div className="flex flex-col text-left">
-                <span className="text-xs font-bold leading-tight text-slate-900">
-                  Mail Security
-                </span>
-                <span className="text-[10px] text-slate-500 font-medium">
-                  SPF Fail
-                </span>
-              </div>
-            </button>
-            <button className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 shadow-sm transition-all active:scale-95 group">
-              <span className="material-symbols-outlined text-lg group-hover:text-indigo-600 transition-colors">
-                dns
-              </span>
-              <div className="flex flex-col text-left">
-                <span className="text-xs font-bold leading-tight text-slate-900">
-                  DNS Security
-                </span>
-                <span className="text-[10px] text-slate-500 font-medium">
-                  DNSSEC Missing
-                </span>
-              </div>
-            </button>
-          </div>
-        </section>
-
-        {/* Vulnerabilities Section */}
-        <section className="bg-surface-container-lowest rounded-2xl p-8 shadow-sm border border-slate-200">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-              <h3 className="text-2xl font-extrabold font-headline tracking-tight text-on-surface">
-                Critical Vulnerabilities
-              </h3>
-              <p className="text-on-surface-variant text-sm">
-                Reviewing 12 findings in 'Application Security'
+              <p className="text-sm text-slate-600 max-w-xl">
+                12 security controls evaluated across Network, Application, DNS, and Endpoint security vectors.
               </p>
             </div>
-            <div className="flex gap-2">
-              <button className="px-4 py-2 bg-surface-container-low text-on-surface font-semibold text-sm rounded-lg flex items-center gap-2 hover:bg-surface-container-high transition-all">
-                <span className="material-symbols-outlined text-sm">
-                  filter_list
-                </span>{" "}
-                Filter
-              </button>
-              <button className="px-4 py-2 bg-surface-container-low text-on-surface font-semibold text-sm rounded-lg flex items-center gap-2 hover:bg-surface-container-high transition-all">
-                <span className="material-symbols-outlined text-sm">
-                  download
-                </span>{" "}
-                Export
-              </button>
+            
+            <div className="shrink-0">
+              <Link to="/assessment" className="px-8 py-3 bg-slate-50 hover:bg-slate-100 text-indigo-600 text-sm font-bold rounded-xl border border-slate-200 transition-colors flex items-center justify-center gap-2 w-full md:w-auto">
+                Full Info <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </Link>
             </div>
           </div>
 
-          {/* Vulnerability List */}
-          <div className="space-y-4">
-            {/* Item 1 */}
-            <div className="group flex flex-wrap md:flex-nowrap items-center gap-6 p-5 rounded-xl bg-red-50 border border-red-100 transition-colors">
-              <div className="w-12 h-12 bg-red-600 text-white rounded-full flex items-center justify-center shrink-0 shadow-sm">
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontVariationSettings: `"FILL" 1` }}
-                >
-                  warning
-                </span>
-              </div>
-              <div className="flex-grow">
-                <h4 className="text-lg font-bold text-red-900 mb-1">
-                  Expired SSL Certificate
-                </h4>
-                <div className="flex flex-col text-[12px] text-red-700/80 font-medium">
-                  <span className="uppercase tracking-wider">
-                    api.example.com
-                  </span>
-                  <span>IP: 192.168.1.1</span>
-                  <span>Port: 443</span>
+          {/* 2. Regular Scan Card (Horizontal, matching reference image) */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row items-stretch gap-8 relative">
+            <div className="md:w-64 shrink-0 border border-slate-100 rounded-xl p-5 flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Security Grade</span>
+                  <span className="material-symbols-outlined text-indigo-600 text-sm" style={{ fontVariationSettings: `"FILL" 1` }}>verified_user</span>
+                </div>
+                <div className="flex items-baseline gap-1 mb-2">
+                  <h2 className="text-5xl font-extrabold font-headline tracking-tighter text-emerald-600">84</h2>
+                  <span className="text-lg text-slate-400 font-medium">/100</span>
                 </div>
               </div>
-              <div className="shrink-0 px-3 py-1 bg-red-600 text-white rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">
-                Critical
-              </div>
-              <div className="flex gap-3 shrink-0">
-                <button className="px-6 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-indigo-700 active:scale-95 transition-all">
-                  Fix
-                </button>
-                <button className="px-4 py-2 border-2 border-red-200 text-red-700 text-sm font-semibold rounded-lg hover:bg-white transition-all">
-                  Share
-                </button>
+              <div className="mt-4">
+                <div className="flex-grow h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1.5">
+                  <div className="h-full bg-indigo-600 rounded-full" style={{ width: "84%" }} />
+                </div>
+                <div className="text-right">
+                  <span className="font-bold font-headline uppercase tracking-widest text-[10px] text-emerald-600">Optimal</span>
+                </div>
               </div>
             </div>
 
-            {/* Item 2 */}
-            <div className="group flex flex-wrap md:flex-nowrap items-center gap-6 p-5 rounded-xl bg-amber-50 border border-amber-100 transition-colors">
-              <div className="w-12 h-12 bg-amber-500 text-white rounded-full flex items-center justify-center shrink-0 shadow-sm">
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontVariationSettings: `"FILL" 1` }}
-                >
-                  sensors_off
-                </span>
+            <div className="flex-1 flex flex-col justify-center py-2">
+              <div className="inline-flex items-center gap-2 px-0 py-1 text-slate-600 text-[10px] font-bold uppercase tracking-widest mb-1">
+                <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full" /> 
+                Active Scan Result
               </div>
-              <div className="flex-grow">
-                <h4 className="text-lg font-bold text-amber-900 mb-1">
-                  Open Port 80
-                </h4>
-                <div className="flex flex-col text-[12px] text-amber-700/80 font-medium">
-                  <span className="uppercase tracking-wider">
-                    dev.example.com
-                  </span>
-                  <span>IP: 192.168.1.5</span>
-                  <span>Port: 80</span>
+              <h3 className="text-4xl md:text-5xl font-extrabold font-headline tracking-tight text-slate-900 mb-6 truncate" title="example.com">
+                example.com
+              </h3>
+
+              <div className="flex flex-wrap gap-x-12 gap-y-6">
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1 border-b border-slate-100 pb-1">IP Address</span>
+                  <span className="text-sm font-semibold text-slate-800">192.168.1.1</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1 border-b border-slate-100 pb-1">Last Scan</span>
+                  <span className="text-sm font-semibold text-slate-800">Oct 28, 2023 - 14:30</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1 border-b border-slate-100 pb-1">Environment</span>
+                  <span className="text-sm font-semibold text-slate-800">Production (AWS-East)</span>
                 </div>
               </div>
-              <div className="shrink-0 px-3 py-1 bg-amber-500 text-white rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">
-                High
+            </div>
+            
+            <div className="shrink-0 flex items-center mt-6 md:mt-0 justify-center">
+              <Link to="/scan-details" className="px-8 py-3 bg-slate-50 hover:bg-slate-100 text-emerald-700 text-sm font-bold rounded-xl border border-slate-200 transition-colors flex items-center justify-center gap-2 w-full md:w-auto">
+                Full Info <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* 3. Malware Scan Card (Horizontal) */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center gap-8">
+            <div className="md:w-64 shrink-0 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+                <span className="material-symbols-outlined text-rose-600 text-2xl">bug_report</span>
+                <h3 className="font-bold text-slate-800 text-lg">Malware Intel</h3>
               </div>
-              <div className="flex gap-3 shrink-0">
-                <button className="px-6 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-indigo-700 active:scale-95 transition-all">
-                  Fix
-                </button>
-                <button className="px-4 py-2 border-2 border-amber-200 text-amber-700 text-sm font-semibold rounded-lg hover:bg-white transition-all">
-                  Share
-                </button>
+              <span className="px-3 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] uppercase font-bold tracking-widest rounded-full inline-block mb-3">Clean Status</span>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto md:mx-0">
+                Continuous file monitoring and real-time blacklisting checks across all endpoints.
+              </p>
+            </div>
+
+            <div className="flex-1 flex flex-wrap gap-4 justify-center md:justify-start w-full">
+              <div className="bg-slate-50 border border-slate-100 rounded-xl px-5 py-4 flex items-center gap-5 hover:border-slate-200 transition-colors flex-1 min-w-[140px] max-w-[200px]">
+                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                  <span className="material-symbols-outlined text-base">coronavirus</span>
+                </div>
+                <div>
+                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Malicious</div>
+                   <div className="text-xl font-black text-slate-900 leading-tight">0</div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-100 rounded-xl px-5 py-4 flex items-center gap-5 hover:border-slate-200 transition-colors flex-1 min-w-[140px] max-w-[200px]">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                  <span className="material-symbols-outlined text-base">warning</span>
+                </div>
+                <div>
+                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Suspicious</div>
+                   <div className="text-xl font-black text-slate-900 leading-tight">0</div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-100 rounded-xl px-5 py-4 flex items-center gap-5 hover:border-slate-200 transition-colors flex-1 min-w-[140px] max-w-[200px]">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                  <span className="material-symbols-outlined text-base">check_circle</span>
+                </div>
+                <div>
+                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Clean File</div>
+                   <div className="text-xl font-black text-slate-900 leading-tight">1,204</div>
+                </div>
               </div>
             </div>
 
-            {/* Item 3 */}
-            <div className="group flex flex-wrap md:flex-nowrap items-center gap-6 p-5 rounded-xl bg-slate-100 border border-slate-200 transition-colors">
-              <div className="w-12 h-12 bg-slate-500 text-white rounded-full flex items-center justify-center shrink-0 shadow-sm">
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontVariationSettings: `"FILL" 1` }}
-                >
-                  javascript
-                </span>
-              </div>
-              <div className="flex-grow">
-                <h4 className="text-lg font-bold text-slate-900 mb-1">
-                  Vulnerable JS Library (jQuery 1.12)
-                </h4>
-                <div className="flex flex-col text-[12px] text-slate-600 font-medium">
-                  <span className="uppercase tracking-wider">
-                    cdn.example.com
-                  </span>
-                  <span>IP: 192.168.1.10</span>
-                  <span>Port: 443</span>
-                </div>
-              </div>
-              <div className="shrink-0 px-3 py-1 bg-slate-500 text-white rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">
-                Medium
-              </div>
-              <div className="flex gap-3 shrink-0">
-                <button className="px-6 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-indigo-700 active:scale-95 transition-all">
-                  Fix
-                </button>
-                <button className="px-4 py-2 border-2 border-slate-300 text-slate-600 text-sm font-semibold rounded-lg hover:bg-white transition-all">
-                  Share
-                </button>
-              </div>
-            </div>
-
-            {/* Item 4 */}
-            <div className="group flex flex-wrap md:flex-nowrap items-center gap-6 p-5 rounded-xl bg-red-50 border border-red-100 transition-colors">
-              <div className="w-12 h-12 bg-red-600 text-white rounded-full flex items-center justify-center shrink-0 shadow-sm">
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontVariationSettings: `"FILL" 1` }}
-                >
-                  lock_open
-                </span>
-              </div>
-              <div className="flex-grow">
-                <h4 className="text-lg font-bold text-red-900 mb-1">
-                  Unprotected SQL Endpoint
-                </h4>
-                <div className="flex flex-col text-[12px] text-red-700/80 font-medium">
-                  <span className="uppercase tracking-wider">
-                    portal.example.com
-                  </span>
-                  <span>IP: 192.168.1.20</span>
-                  <span>Port: 3306</span>
-                </div>
-              </div>
-              <div className="shrink-0 px-3 py-1 bg-red-600 text-white rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">
-                Critical
-              </div>
-              <div className="flex gap-3 shrink-0">
-                <button className="px-6 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-indigo-700 active:scale-95 transition-all">
-                  Fix
-                </button>
-                <button className="px-4 py-2 border-2 border-red-200 text-red-700 text-sm font-semibold rounded-lg hover:bg-white transition-all">
-                  Share
-                </button>
-              </div>
+            <div className="shrink-0 w-full md:w-auto">
+              <Link to="/malware-history" className="px-8 py-3 bg-slate-50 hover:bg-slate-100 text-rose-600 text-sm font-bold rounded-xl border border-slate-200 transition-colors flex items-center justify-center gap-2">
+                Full Info <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </Link>
             </div>
           </div>
         </section>
+
       </main>
     </div>
   );
