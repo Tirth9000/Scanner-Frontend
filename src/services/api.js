@@ -57,6 +57,14 @@ export function resetPasswordWithOtp(email, otp, new_password) {
   });
 }
 
+export function resetPassword(old_password, new_password, token) {
+  return request("/auth/reset-password", {
+    method: "POST",
+    body: { old_password, new_password },
+    token,
+  });
+}
+
 // ─── Profile & Members ───────────────────────────────────────────────────────
 
 export function getMembers(token) {
@@ -115,5 +123,50 @@ export function getIpReputation(ip, token) {
 export function getWebSocketUrl(orgId) {
   const base = API_BASE.replace(/^http/, "ws");
   return `${base}/webhooks/ws/${orgId}`;
+}
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
+
+export function generatePromoCode(token) {
+  return request("/admin/generate-promo", {
+    method: "POST",
+    token,
+  });
+}
+
+export function getPromoCodes(token) {
+  return request("/admin/promo-codes", { token });
+}
+
+export function getUsersByOrg(token) {
+  return request("/admin/users", { token });
+}
+
+export function blockUserByEmail(email, token) {
+  return request("/admin/blacklist/block", {
+    method: "POST",
+    body: { email },
+    token,
+  });
+}
+
+export function unblockUserByEmail(email, token) {
+  return request("/admin/blacklist/unblock", {
+    method: "POST",
+    body: { email },
+    token,
+  });
+}
+
+export function getBlacklistedEmails(token) {
+  return request("/admin/blacklist", { token });
+}
+
+export function getScanSummaries(token) {
+  return request("/admin/scans/summaries", { token });
+}
+
+export function getTotalScans(token) {
+  return request("/admin/scans/total", { token });
 }
 

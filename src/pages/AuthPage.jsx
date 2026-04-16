@@ -56,7 +56,12 @@ function AuthPage() {
       const data = await loginUser(email, password);
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      navigate("/scan-dashboard");
+      
+      if (data.user?.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/scan-dashboard");
+      }
     } catch (err) {
       setError(err.message);
     } finally {

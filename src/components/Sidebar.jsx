@@ -1,9 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import logo from "../assets/logo.svg";
+import ResetPasswordModal from "./ResetPasswordModal";
 
 function Sidebar({ isOpen, onToggle }) {
   const location = useLocation();
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   // Keep the completion flag in-memory so it resets on full page reload.
   const [malwareScanComplete, setMalwareScanComplete] = useState(() =>
@@ -164,12 +166,21 @@ function Sidebar({ isOpen, onToggle }) {
             <span>Profile</span>
           </Link>
 
-          <Link to="/settings" className={`${baseClass} ${inactiveClass}`}>
+          <button 
+            type="button"
+            onClick={() => setIsResetModalOpen(true)}
+            className={`w-full text-left ${baseClass} ${inactiveClass}`}
+          >
             <span className="material-symbols-outlined">settings</span>
             <span>Settings</span>
-          </Link>
+          </button>
         </div>
       </div>
+
+      <ResetPasswordModal 
+        isOpen={isResetModalOpen} 
+        onClose={() => setIsResetModalOpen(false)} 
+      />
     </aside>
   );
 }

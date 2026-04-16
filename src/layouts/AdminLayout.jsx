@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.svg";
 
 function SidebarLink({ to, icon, children }) {
@@ -29,51 +29,29 @@ function SidebarLink({ to, icon, children }) {
   );
 }
 
-function HeaderButtons() {
-  const [active, setActive] = useState(null); // 'notifications' | 'settings' | null
-
-  const toggle = (key) => {
-    setActive((current) => (current === key ? null : key));
-  };
-
-  const buttonBase =
-    "p-2 rounded-lg transition-transform duration-150 flex items-center justify-center";
-
-  return (
-    <div className="flex items-center gap-1">
-      <button
-        onClick={() => toggle("notifications")}
-        className={`${buttonBase} ${active === "notifications" ? "bg-indigo-50 text-primary scale-95 shadow-sm" : "text-on-surface-variant hover:text-primary"}`}
-        aria-pressed={active === "notifications"}
-      >
-        <span className="material-symbols-outlined">notifications</span>
-      </button>
-
-      <button
-        onClick={() => toggle("settings")}
-        className={`${buttonBase} ${active === "settings" ? "bg-indigo-50 text-primary scale-95 shadow-sm" : "text-on-surface-variant hover:text-primary"}`}
-        aria-pressed={active === "settings"}
-      >
-        <span className="material-symbols-outlined">settings</span>
-      </button>
-    </div>
-  );
-}
-
 function AdminLayout() {
   const [isOpen, setIsOpen] = React.useState(true);
+  const navigate = useNavigate();
+
   const onToggle = () => setIsOpen((v) => !v);
+
+  const handleLogout = (e) => {
+    e.preventDefault();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/auth");
+  };
 
   return (
     <div className="flex min-h-screen">
       {/* Admin Sidebar */}
       <aside
-        className={`relative flex flex-col h-screen overflow-hidden border-r bg-surface transition-all duration-300 ${
+        className={`sticky top-0 flex flex-col h-screen overflow-hidden border-r bg-surface transition-all duration-300 ${
           isOpen ? "w-72 px-6 py-8 border-r" : "w-0 border-r-0 px-0 py-0"
         }`}
         aria-hidden={!isOpen}
       >
-        {/* Toggle button (same pattern as main Sidebar) */}
+        {/* Toggle button */}
         <button
           type="button"
           onClick={onToggle}
@@ -106,13 +84,7 @@ function AdminLayout() {
             </div>
           </div>
 
-          <button className="mb-8 w-full bg-blue-600 text-white py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700">
-            <span className="material-symbols-outlined">add_circle</span>
-            <span>New Scan</span>
-          </button>
-
           <nav className="flex-1 space-y-2">
-            {/* Sidebar link styles with active indicator */}
             <SidebarLink to="/admin" icon="group">
               User Management
             </SidebarLink>
@@ -128,45 +100,31 @@ function AdminLayout() {
           </nav>
 
           <div className="pt-8 mt-8 border-t space-y-2">
-            <Link
-              to="#"
-              className="flex items-center gap-3 px-4 py-3 text-on-surface hover:text-error"
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 text-on-surface hover:text-error transition-colors bg-transparent border-none outline-none cursor-pointer text-left"
             >
               <span className="material-symbols-outlined">logout</span>
-              <span>Logout</span>
-            </Link>
+              <span className="font-medium text-base">Logout</span>
+            </button>
           </div>
         </div>
       </aside>
 
-      {/* Main area with top nav + outlet */}
-      <div className="flex-1 ml-0">
-        <header className="flex justify-between items-center w-full px-6 py-4 bg-surface">
-          <div className="flex items-center gap-4">
-            {!isOpen && (
+      {/* Main area with outlet */}
+      <div className="flex-1 ml-0 relative">
+          {!isOpen && (
               <button
                 type="button"
                 onClick={onToggle}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                className="absolute top-4 left-4 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                 aria-label="Open sidebar"
               >
                 <span className="material-symbols-outlined">
                   keyboard_double_arrow_right
                 </span>
               </button>
-            )}
-
-            <div className="text-center">
-              <p className="text-sm font-bold">Alex Sentinel</p>
-              <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
-                Administrator
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 ">
-            <HeaderButtons />
-          </div>
-        </header>
+          )}
 
         <main className="p-3">
           <Outlet />
