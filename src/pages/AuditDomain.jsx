@@ -1,253 +1,86 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-const STAGES = [
-  {
-    id: "domainValidation",
-    name: "Domain Validation",
-    icon: "language",
-  },
-  {
-    id: "subdomainDiscovery",
-    name: "Subdomain Discovery",
-    icon: "travel_explore",
-  },
-  {
-    id: "subdomainFilter",
-    name: "Subdomain Filter",
-    icon: "filter_alt",
-  },
-  {
-    id: "dataCollection",
-    name: "Data Collection",
-    icon: "database",
-  },
-];
-
-const PENDING = "pending";
-const RUNNING = "running";
-const COMPLETED = "completed";
-
-function createPendingStageState() {
-  return STAGES.reduce((accumulator, stage) => {
-    accumulator[stage.id] = PENDING;
-    return accumulator;
-  }, {});
-}
-
-function getStageCardClasses(status) {
-  if (status === COMPLETED) {
-    return "border-emerald-200 bg-emerald-50 text-emerald-900 shadow-[0_12px_32px_rgba(16,185,129,0.12)]";
-  }
-
-  if (status === RUNNING) {
-    return "border-indigo-400 bg-indigo-50/70 text-indigo-900 shadow-[0_16px_36px_rgba(92,90,139,0.12)]";
-  }
-
-  return "border-slate-200 bg-slate-50/80 text-slate-500 opacity-80";
-}
-
-function getStageIconWrapClasses(status) {
-  if (status === COMPLETED) {
-    return "bg-emerald-500 text-white shadow-lg shadow-emerald-200";
-  }
-
-  if (status === RUNNING) {
-    return "bg-indigo-500 text-white shadow-lg shadow-indigo-200";
-  }
-
-  return "bg-slate-200 text-slate-500";
-}
-
-function getStageLabel(status) {
-  if (status === COMPLETED) {
-    return "Complete";
-  }
-
-  if (status === RUNNING) {
-    return "In Progress";
-  }
-
-  return "";
-}
-
-function getStageLabelClasses(status) {
-  if (status === COMPLETED) {
-    return "text-emerald-700";
-  }
-
-  if (status === RUNNING) {
-    return "text-indigo-700";
-  }
-
-  return "text-slate-400";
-}
-
-function StageCard({ stage, status }) {
-  const label = getStageLabel(status);
-
-  return (
-    <div
-      className={`relative flex flex-col items-center gap-4 rounded-2xl border p-6 text-center transition-all duration-300 ${getStageCardClasses(
-        status,
-      )} ${status === RUNNING ? "overflow-hidden" : ""}`}
-    >
-      {status === RUNNING && (
-        <div className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-2xl">
-          <div className="h-full w-1/2 animate-[scanSweep_1.5s_linear_infinite] bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
-        </div>
-      )}
-
-      <div
-        className={`flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-300 ${getStageIconWrapClasses(
-          status,
-        )}`}
-      >
-        {status === COMPLETED ? (
-          <span className="material-symbols-outlined text-[28px]">
-            check_circle
-          </span>
-        ) : status === RUNNING ? (
-          <span
-            className="material-symbols-outlined animate-spin text-[28px]"
-            style={{ animationDuration: "2.8s" }}
-          >
-            progress_activity
-          </span>
-        ) : (
-          <span className="material-symbols-outlined text-[28px]">
-            {stage.icon}
-          </span>
-        )}
-      </div>
-
-      <div className="flex min-h-[72px] flex-col items-center justify-center">
-        <h3 className="font-headline text-sm font-extrabold tracking-tight">
-          {stage.name}
-        </h3>
-
-        {label && (
-          <span
-            className={`mt-2 block text-[11px] font-bold uppercase tracking-[0.28em] ${getStageLabelClasses(
-              status,
-            )}`}
-          >
-            {label}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function NewScan() {
   const [domain, setDomain] = useState("");
-  const [stageStatuses, setStageStatuses] = useState(createPendingStageState);
   const [isScanRunning, setIsScanRunning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
   const trimmedDomain = domain.trim();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Handle Webhook Progress Updates
   useEffect(() => {
-    if (!isScanRunning) {
-      return undefined;
-    }
-
-    const stageTimers = [
-      window.setTimeout(() => {
-        setStageStatuses({
-          domainValidation: COMPLETED,
-          subdomainDiscovery: RUNNING,
-          subdomainFilter: PENDING,
-          dataCollection: PENDING,
-        });
-      }, 1800),
-      window.setTimeout(() => {
-        setStageStatuses({
-          domainValidation: COMPLETED,
-          subdomainDiscovery: COMPLETED,
-          subdomainFilter: RUNNING,
-          dataCollection: PENDING,
-        });
-      }, 3600),
-      window.setTimeout(() => {
-        setStageStatuses({
-          domainValidation: COMPLETED,
-          subdomainDiscovery: COMPLETED,
-          subdomainFilter: COMPLETED,
-          dataCollection: RUNNING,
-        });
-      }, 5400),
-      window.setTimeout(() => {
-        setStageStatuses({
-          domainValidation: COMPLETED,
-          subdomainDiscovery: COMPLETED,
-          subdomainFilter: COMPLETED,
-          dataCollection: COMPLETED,
-        });
-        setIsScanRunning(false);
-        try {
-          window.__newScanCompleted = true;
-          window.dispatchEvent(new Event("new-scan-complete"));
-
-          if (location && location.pathname === "/scan") {
-            navigate("/scan-dashboard");
-          }
-        } catch (e) {
-          // noop
+    const handleProgressUpdate = (event) => {
+      const { progress } = event.detail ?? {};
+      if (typeof progress === "number" && progress >= 0 && progress <= 100) {
+        setScanProgress(progress);
+        if (progress === 100) {
+           setTimeout(() => {
+             setIsScanRunning(false);
+             try {
+               window.__newScanCompleted = true;
+               window.dispatchEvent(new Event("new-scan-complete"));
+               if (location && location.pathname === "/scan") {
+                 navigate("/scan-dashboard");
+               }
+             } catch (e) {
+               // noop
+             }
+           }, 1000);
         }
-      }, 7200),
-    ];
-
-    return () => {
-      stageTimers.forEach((timer) => window.clearTimeout(timer));
-    };
-  }, [isScanRunning]);
-
-  /*
-  useEffect(() => {
-    const handleStageUpdate = (event) => {
-      const { stageId, status } = event.detail ?? {};
-
-      if (!stageId || ![PENDING, RUNNING, COMPLETED].includes(status)) {
-        return;
       }
-
-      setStageStatuses((current) => ({
-        ...current,
-        [stageId]: status,
-      }));
     };
 
-    window.addEventListener("scan-stage-update", handleStageUpdate);
+    window.addEventListener("scan-progress-update", handleProgressUpdate);
 
-    window.updateScanStage = (stageId, status) => {
+    // Webhook simulation helper so backend can easily inject progress
+    window.updateScanProgress = (progress) => {
       window.dispatchEvent(
-        new CustomEvent("scan-stage-update", {
-          detail: { stageId, status },
+        new CustomEvent("scan-progress-update", {
+          detail: { progress },
         }),
       );
     };
 
     return () => {
-      window.removeEventListener("scan-stage-update", handleStageUpdate);
-      delete window.updateScanStage;
+      window.removeEventListener("scan-progress-update", handleProgressUpdate);
+      delete window.updateScanProgress;
     };
-  }, []);
-  */
+  }, [location, navigate]);
+
+  // UI Simulation for demonstration purposes (simulates backend webhook calls)
+  useEffect(() => {
+    if (!isScanRunning) {
+      return undefined;
+    }
+
+    setScanProgress(0);
+
+    // Simulate progress if no external webhook calls updateScanProgress
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.floor(Math.random() * 15) + 5; // increment by 5-20%
+      if (progress > 100) progress = 100;
+      
+      window.updateScanProgress(progress);
+
+      if (progress === 100) {
+        clearInterval(interval);
+      }
+    }, 800);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isScanRunning]);
 
   const handleStartScan = () => {
     if (isScanRunning || !trimmedDomain) {
       return;
     }
-
-    setStageStatuses({
-      domainValidation: RUNNING,
-      subdomainDiscovery: PENDING,
-      subdomainFilter: PENDING,
-      dataCollection: PENDING,
-    });
     setIsScanRunning(true);
+    setScanProgress(0);
   };
 
   const isInputDisabled = isScanRunning;
@@ -306,7 +139,7 @@ function NewScan() {
               type="button"
               onClick={handleStartScan}
               disabled={isStartDisabled}
-              className="flex items-center justify-center gap-3 rounded-xl bg-indigo-600 px-10 py-4 font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300 disabled:shadow-none"
+              className="flex items-center justify-center gap-3 rounded-xl bg-indigo-600 px-10 py-4 font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300 disabled:shadow-none min-w-[200px]"
             >
               <span>{isScanRunning ? "Scan Running" : "Initialize Scan"}</span>
               <span className="material-symbols-outlined">
@@ -316,15 +149,33 @@ function NewScan() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {STAGES.map((stage) => (
-            <StageCard
-              key={stage.id}
-              stage={stage}
-              status={stageStatuses[stage.id]}
-            />
-          ))}
-        </div>
+        {/* Dynamic Progress Bar Replacing the Strategy Cards */}
+        {isScanRunning && (
+           <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-8 shadow-sm transition-all duration-500">
+             <div className="flex justify-between items-center mb-4">
+               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                 <span className="material-symbols-outlined animate-spin text-indigo-600">progress_activity</span>
+                 Active Scan in Progress
+               </h3>
+               <span className="text-2xl font-black text-indigo-600">{scanProgress}%</span>
+             </div>
+             
+             <div className="w-full h-5 bg-indigo-100 rounded-full overflow-hidden shadow-inner relative">
+               <div 
+                 className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-300 ease-out flex items-center justify-end"
+                 style={{ width: `${scanProgress}%` }}
+               >
+                 <div className="h-full w-20 bg-white/20 animate-[scanSweep_1.5s_linear_infinite]" />
+               </div>
+             </div>
+             
+             <div className="mt-4 flex items-center justify-between">
+               <p className="text-sm font-semibold text-slate-600">
+                 {scanProgress === 100 ? "Scan completed successfully." : "Awaiting detailed telemetry from the webhook backend..."}
+               </p>
+             </div>
+           </div>
+        )}
       </div>
     </div>
   );
