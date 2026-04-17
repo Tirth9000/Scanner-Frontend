@@ -8,12 +8,13 @@ import Landing from "./pages/LandingPage";
 import Auth from "./pages/AuthPage";
 import Scan from "./pages/AuditDomain";
 import MalwareScan from "./pages/MalwareScan";
-import MalwareDashboard from "./pages/MalwareDashboard";
 import ScanDashboard from "./pages/ScanDashboard";
+import ScanDetails from "./pages/ScanDetails";
 import AdminUsers from "./pages/AdminUsers";
 import AdminSubscription from "./pages/AdminSubscription";
 import Assessment from "./pages/Assessment";
 import MalwareScanHistory from "./pages/MalwareScanHistory";
+import MalwareDashboard from "./pages/MalwareDashboard";
 import Profile from "./pages/Profile";
 
 function App() {
@@ -29,10 +30,11 @@ function App() {
 
       <Route path="/" element={<DashboardLayout />}>
         <Route path="scan-dashboard" element={<ScanDashboard />} />
+        <Route path="scan-details" element={<ScanDetails />} />
         <Route path="scan" element={<Scan />} />
         <Route path="malware" element={<MalwareScan />} />
-        <Route path="malware-dashboard" element={<MalwareDashboard />} />
         <Route path="malware-history" element={<MalwareScanHistory />} />
+        <Route path="malware-dashboard" element={<MalwareDashboard />} />
         <Route path="assessment" element={<Assessment />} />
         <Route path="profile" element={<Profile />} />
       </Route>

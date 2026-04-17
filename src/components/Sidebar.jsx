@@ -85,7 +85,7 @@ function Sidebar({ isOpen, onToggle }) {
               }
             />
             <span className="material-symbols-outlined">dashboard</span>
-            <span>Scan Dashboard</span>
+            <span>Dashboard</span>
           </Link>
 
           <Link
@@ -139,21 +139,7 @@ function Sidebar({ isOpen, onToggle }) {
             <span>Malware Scan</span>
           </Link>
 
-          {/* Malware Dashboard link (persistent) */}
-          <Link
-            to="/malware-dashboard"
-            className={`${baseClass} ${isActive("/malware-dashboard") ? activeClass : inactiveClass}`}
-          >
-            <span
-              className={
-                isActive("/malware-dashboard")
-                  ? "absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-r-full transition-all duration-200"
-                  : "absolute left-0 top-0 bottom-0 w-0 bg-indigo-600 rounded-r-full transition-all duration-200"
-              }
-            />
-            <span className="material-symbols-outlined">dashboard</span>
-            <span>Malware Dashboard</span>
-          </Link>
+
 
           {/* Malware Scan History moved to the Malware page header per UX request */}
         </nav>

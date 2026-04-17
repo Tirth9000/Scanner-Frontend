@@ -1,327 +1,87 @@
-import { useEffect, useState, useRef } from "react";
-import {
-  registerScanTask,
-  getProfile,
-  getWebSocketUrl,
-} from "../services/api";
-
-const STAGES = [
-  {
-    id: "domainValidation",
-    name: "Domain Validation",
-    icon: "language",
-  },
-  {
-    id: "subdomainDiscovery",
-    name: "Subdomain Discovery",
-    icon: "travel_explore",
-  },
-  {
-    id: "subdomainFilter",
-    name: "Subdomain Filter",
-    icon: "filter_alt",
-  },
-  {
-    id: "dataCollection",
-    name: "Data Collection",
-    icon: "database",
-  },
-];
-
-const PENDING = "pending";
-const RUNNING = "running";
-const COMPLETED = "completed";
-
-const STAGE_ORDER = STAGES.map((s) => s.id);
-const scanSessionListeners = new Set();
-
-let activeScanSocket = null;
-
-// Maps WebSocket event names from the backend to frontend stage IDs
-const EVENT_TO_STAGE = {
-  domain_validation: "domainValidation",
-  subdomain_discovery: "subdomainDiscovery",
-  subdomain_filter: "subdomainFilter",
-  data_collection: "dataCollection",
-};
-
-function createPendingStageState() {
-  return STAGES.reduce((accumulator, stage) => {
-    accumulator[stage.id] = PENDING;
-    return accumulator;
-  }, {});
-}
-
-function createCompletedStageState() {
-  return STAGES.reduce((accumulator, stage) => {
-    accumulator[stage.id] = COMPLETED;
-    return accumulator;
-  }, {});
-}
-
-function createDefaultScanSession() {
-  return {
-    domain: "",
-    stageStatuses: createPendingStageState(),
-    isScanRunning: false,
-    scanError: null,
-  };
-}
-
-let scanSession = createDefaultScanSession();
-
-function getScanSession() {
-  return scanSession;
-}
-
-function setScanSession(nextSession) {
-  scanSession =
-    typeof nextSession === "function" ? nextSession(scanSession) : nextSession;
-  scanSessionListeners.forEach((listener) => listener(scanSession));
-}
-
-function subscribeToScanSession(listener) {
-  scanSessionListeners.add(listener);
-  return () => scanSessionListeners.delete(listener);
-}
-
-function resetScanSession() {
-  setScanSession(createDefaultScanSession());
-}
-
-function closeActiveScanSocket() {
-  if (activeScanSocket) {
-    activeScanSocket.close();
-    activeScanSocket = null;
-  }
-}
-
-function getStageCardClasses(status) {
-  if (status === COMPLETED) {
-    return "border-emerald-200 bg-emerald-50 text-emerald-900 shadow-[0_12px_32px_rgba(16,185,129,0.12)]";
-  }
-
-  if (status === RUNNING) {
-    return "border-indigo-400 bg-indigo-50/70 text-indigo-900 shadow-[0_16px_36px_rgba(92,90,139,0.12)]";
-  }
-
-  return "border-slate-200 bg-slate-50/80 text-slate-500 opacity-80";
-}
-
-function getStageIconWrapClasses(status) {
-  if (status === COMPLETED) {
-    return "bg-emerald-500 text-white shadow-lg shadow-emerald-200";
-  }
-
-  if (status === RUNNING) {
-    return "bg-indigo-500 text-white shadow-lg shadow-indigo-200";
-  }
-
-  return "bg-slate-200 text-slate-500";
-}
-
-function getStageLabel(status) {
-  if (status === COMPLETED) {
-    return "Complete";
-  }
-
-  if (status === RUNNING) {
-    return "In Progress";
-  }
-
-  return "";
-}
-
-function getStageLabelClasses(status) {
-  if (status === COMPLETED) {
-    return "text-emerald-700";
-  }
-
-  if (status === RUNNING) {
-    return "text-indigo-700";
-  }
-
-  return "text-slate-400";
-}
-
-function StageCard({ stage, status }) {
-  const label = getStageLabel(status);
-
-  return (
-    <div
-      className={`relative flex flex-col items-center gap-4 rounded-2xl border p-6 text-center transition-all duration-300 ${getStageCardClasses(
-        status,
-      )} ${status === RUNNING ? "overflow-hidden" : ""}`}
-    >
-      {status === RUNNING && (
-        <div className="absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-2xl">
-          <div className="h-full w-1/2 animate-[scanSweep_1.5s_linear_infinite] bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
-        </div>
-      )}
-
-      <div
-        className={`flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-300 ${getStageIconWrapClasses(
-          status,
-        )}`}
-      >
-        {status === COMPLETED ? (
-          <span className="material-symbols-outlined text-[28px]">
-            check_circle
-          </span>
-        ) : status === RUNNING ? (
-          <span
-            className="material-symbols-outlined animate-spin text-[28px]"
-            style={{ animationDuration: "2.8s" }}
-          >
-            progress_activity
-          </span>
-        ) : (
-          <span className="material-symbols-outlined text-[28px]">
-            {stage.icon}
-          </span>
-        )}
-      </div>
-
-      <div className="flex min-h-[72px] flex-col items-center justify-center">
-        <h3 className="font-headline text-sm font-extrabold tracking-tight">
-          {stage.name}
-        </h3>
-
-        {label && (
-          <span
-            className={`mt-2 block text-[11px] font-bold uppercase tracking-[0.28em] ${getStageLabelClasses(
-              status,
-            )}`}
-          >
-            {label}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function NewScan() {
-  const [scanSessionState, setScanSessionState] = useState(getScanSession);
-  const [domain, setDomain] = useState(() => getScanSession().domain);
-  const [orgId, setOrgId] = useState(null);
+  const [domain, setDomain] = useState("");
+  const [isScanRunning, setIsScanRunning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanError, setScanError] = useState(null);
   const trimmedDomain = domain.trim();
-  const startingScanRef = useRef(false);
-  const { stageStatuses, isScanRunning, scanError } = scanSessionState;
 
-  // Fetch org_id on mount so we can open the WebSocket later
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      getProfile(token)
-        .then((data) => setOrgId(data.org_id))
-        .catch(() => {});
-    }
-  }, []);
 
+  // Handle Webhook Progress Updates
   useEffect(() => {
-    return subscribeToScanSession((nextSession) => {
-      setScanSessionState(nextSession);
-      if (nextSession.isScanRunning || !nextSession.domain) {
-        setDomain(nextSession.domain);
+    const handleProgressUpdate = (event) => {
+      const { progress } = event.detail ?? {};
+      if (typeof progress === "number" && progress >= 0 && progress <= 100) {
+        setScanProgress(progress);
+        if (progress === 100) {
+           setTimeout(() => {
+             setIsScanRunning(false);
+             try {
+               window.__newScanCompleted = true;
+               window.dispatchEvent(new Event("new-scan-complete"));
+               if (location && location.pathname === "/scan") {
+                 navigate("/scan-dashboard");
+               }
+             } catch (e) {
+               // noop
+             }
+           }, 1000);
+        }
       }
-    });
-  }, []);
+    };
+
+    window.addEventListener("scan-progress-update", handleProgressUpdate);
+
+    // Webhook simulation helper so backend can easily inject progress
+    window.updateScanProgress = (progress) => {
+      window.dispatchEvent(
+        new CustomEvent("scan-progress-update", {
+          detail: { progress },
+        }),
+      );
+    };
+
+    return () => {
+      window.removeEventListener("scan-progress-update", handleProgressUpdate);
+      delete window.updateScanProgress;
+    };
+  }, [location, navigate]);
+
+  // UI Simulation for demonstration purposes (simulates backend webhook calls)
+  useEffect(() => {
+    if (!isScanRunning) {
+      return undefined;
+    }
+
+    setScanProgress(0);
+
+    // Simulate progress if no external webhook calls updateScanProgress
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.floor(Math.random() * 15) + 5; // increment by 5-20%
+      if (progress > 100) progress = 100;
+      
+      window.updateScanProgress(progress);
+
+      if (progress === 100) {
+        clearInterval(interval);
+      }
+    }, 800);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isScanRunning]);
 
   const handleStartScan = () => {
-    if (isScanRunning || startingScanRef.current || !trimmedDomain || !orgId) {
+    if (isScanRunning || !trimmedDomain) {
       return;
     }
-
-    startingScanRef.current = true;
-    const scanDomain = trimmedDomain;
-
-    closeActiveScanSocket();
-    setScanSession({
-      domain: scanDomain,
-      scanError: null,
-      isScanRunning: true,
-      stageStatuses: {
-        domainValidation: RUNNING,
-        subdomainDiscovery: PENDING,
-        subdomainFilter: PENDING,
-        dataCollection: PENDING,
-      },
-    });
-
-    const token = localStorage.getItem("token");
-    const wsUrl = getWebSocketUrl(orgId);
-    const ws = new WebSocket(wsUrl);
-    activeScanSocket = ws;
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        const eventName = msg.event;
-
-        if (eventName === "scan_complete") {
-          setScanSession((current) => ({
-            ...current,
-            stageStatuses: createCompletedStageState(),
-            isScanRunning: false,
-            scanError: null,
-          }));
-          ws.close();
-          activeScanSocket = null;
-          resetScanSession();
-          return;
-        }
-
-        const completedStage = EVENT_TO_STAGE[eventName];
-        if (!completedStage) return;
-
-        setScanSession((current) => {
-          const updated = { ...current.stageStatuses };
-          updated[completedStage] = COMPLETED;
-          // Automatically set the next stage to RUNNING
-          const idx = STAGE_ORDER.indexOf(completedStage);
-          if (idx >= 0 && idx < STAGE_ORDER.length - 1) {
-            const next = STAGE_ORDER[idx + 1];
-            if (updated[next] === PENDING) {
-              updated[next] = RUNNING;
-            }
-          }
-          return { ...current, stageStatuses: updated };
-        });
-      } catch {
-        // ignore malformed messages
-      }
-    };
-
-    ws.onerror = () => {
-      setScanSession((current) => ({
-        ...current,
-        scanError: "Connection lost. Please try again.",
-        isScanRunning: false,
-        stageStatuses: createPendingStageState(),
-      }));
-      activeScanSocket = null;
-      startingScanRef.current = false;
-    };
-
-    // Wait for the socket to open, then fire the API call so we don't miss
-    // the first "domain_validation" event the server sends.
-    ws.onopen = async () => {
-      try {
-        await registerScanTask(scanDomain, token);
-        startingScanRef.current = false;
-      } catch (e) {
-        setScanSession((current) => ({
-          ...current,
-          scanError: e.message || "Failed to start scan.",
-          isScanRunning: false,
-          stageStatuses: createPendingStageState(),
-        }));
-        ws.close();
-        activeScanSocket = null;
-        startingScanRef.current = false;
-      }
-    };
+    setIsScanRunning(true);
+    setScanProgress(0);
+    setScanError(null);
   };
 
   const isInputDisabled = isScanRunning;
@@ -380,7 +140,7 @@ function NewScan() {
               type="button"
               onClick={handleStartScan}
               disabled={isStartDisabled}
-              className="flex items-center justify-center gap-3 rounded-xl bg-indigo-600 px-10 py-4 font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300 disabled:shadow-none"
+              className="flex items-center justify-center gap-3 rounded-xl bg-indigo-600 px-10 py-4 font-bold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300 disabled:shadow-none min-w-[200px]"
             >
               <span>{isScanRunning ? "Scan Running" : "Initialize Scan"}</span>
               <span className="material-symbols-outlined">
@@ -397,15 +157,33 @@ function NewScan() {
           )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {STAGES.map((stage) => (
-            <StageCard
-              key={stage.id}
-              stage={stage}
-              status={stageStatuses[stage.id]}
-            />
-          ))}
-        </div>
+        {/* Dynamic Progress Bar Replacing the Strategy Cards */}
+        {isScanRunning && (
+           <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-8 shadow-sm transition-all duration-500">
+             <div className="flex justify-between items-center mb-4">
+               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                 <span className="material-symbols-outlined animate-spin text-indigo-600">progress_activity</span>
+                 Active Scan in Progress
+               </h3>
+               <span className="text-2xl font-black text-indigo-600">{scanProgress}%</span>
+             </div>
+             
+             <div className="w-full h-5 bg-indigo-100 rounded-full overflow-hidden shadow-inner relative">
+               <div 
+                 className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-300 ease-out flex items-center justify-end"
+                 style={{ width: `${scanProgress}%` }}
+               >
+                 <div className="h-full w-20 bg-white/20 animate-[scanSweep_1.5s_linear_infinite]" />
+               </div>
+             </div>
+             
+             <div className="mt-4 flex items-center justify-between">
+               <p className="text-sm font-semibold text-slate-600">
+                 {scanProgress === 100 ? "Scan completed successfully." : "Awaiting detailed telemetry from the webhook backend..."}
+               </p>
+             </div>
+           </div>
+        )}
       </div>
     </div>
   );
