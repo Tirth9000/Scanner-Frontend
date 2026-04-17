@@ -15,6 +15,7 @@ import AdminSubscription from "./pages/AdminSubscription";
 import Assessment from "./pages/Assessment";
 import ScanHistory from "./pages/ScanHistory";
 import MalwareScanHistory from "./pages/MalwareScanHistory";
+import MalwareDashboard from "./pages/MalwareDashboard";
 import Profile from "./pages/Profile";
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
         <Route path="history" element={<ScanHistory />} />
         <Route path="malware" element={<MalwareScan />} />
         <Route path="malware-history" element={<MalwareScanHistory />} />
+        <Route path="malware-dashboard" element={<MalwareDashboard />} />
         <Route path="assessment" element={<Assessment />} />
         <Route path="profile" element={<Profile />} />
       </Route>
