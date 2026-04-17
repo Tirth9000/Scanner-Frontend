@@ -15,6 +15,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [domain, setDomain] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
@@ -34,6 +35,7 @@ function AuthPage() {
     setEmail(newView === "reset-otp" ? email : ""); // keep email when going to OTP step
     setPassword("");
     setConfirmPassword("");
+    setDomain("");
     setOtp("");
     setNewPassword("");
     setError("");
@@ -75,7 +77,7 @@ function AuthPage() {
     setError("");
     setSuccess("");
 
-    if (!email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword || !domain.trim()) {
       setError("Please fill all the fields");
       return;
     }
@@ -90,7 +92,7 @@ function AuthPage() {
 
     setLoading(true);
     try {
-      const data = await registerUser(email, password);
+      const data = await registerUser(email, password, domain.trim());
       setSuccess(data.message || "Registration successful! Please log in.");
       setTimeout(() => {
         setPassword("");
@@ -298,6 +300,8 @@ function AuthPage() {
                   />
                 </div>
 
+                
+
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="relative">
                     <input
@@ -334,6 +338,20 @@ function AuthPage() {
                       {signupShowConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-on-surface-variant">
+                    Domain
+                  </label>
+                  <input
+                    id="register-domain"
+                    type="text"
+                    placeholder="example.com"
+                    value={domain}
+                    onChange={(e) => setDomain(e.target.value)}
+                    className="w-full mt-1 p-3 rounded-lg bg-surface-container-low outline-none focus:ring-2 focus:ring-primary/40"
+                  />
                 </div>
 
                 <button

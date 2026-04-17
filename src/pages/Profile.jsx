@@ -10,8 +10,6 @@ import {
   addDomain,
 } from "../services/api";
 
-const SCANNED_DOMAINS_KEY = "scannedDomains";
-
 function normalizeDomain(domain) {
   return (domain || "").trim();
 }
@@ -25,15 +23,6 @@ function normalizeProfileDomains(domainValue) {
   return normalizedDomain ? [normalizedDomain] : [];
 }
 
-function readStoredDomains() {
-  try {
-    const domains = JSON.parse(localStorage.getItem(SCANNED_DOMAINS_KEY) || "[]");
-    return Array.isArray(domains) ? domains.map(normalizeDomain).filter(Boolean) : [];
-  } catch {
-    return [];
-  }
-}
-
 function dedupeDomains(domains) {
   const seen = new Set();
 
@@ -44,6 +33,12 @@ function dedupeDomains(domains) {
     seen.add(key);
     return true;
   });
+}
+
+function clearDomainCaches() {
+  localStorage.removeItem("scannedDomains");
+  localStorage.removeItem("lastScannedDomain");
+  localStorage.removeItem("malware_last_scan");
 }
 function Profile() {
   const navigate = useNavigate();
@@ -104,6 +99,7 @@ function Profile() {
         // Token expired or invalid
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        clearDomainCaches();
         navigate("/auth");
       } finally {
         setProfileLoading(false);
@@ -116,10 +112,7 @@ function Profile() {
   useEffect(() => {
     if (!profile || !token) return;
 
-    const domains = dedupeDomains([
-      ...normalizeProfileDomains(profile.domain),
-      ...readStoredDomains(),
-    ]);
+    const domains = dedupeDomains(normalizeProfileDomains(profile.domain));
 
     if (domains.length === 0) {
       setDomainScans([]);
@@ -240,8 +233,7 @@ function Profile() {
       const data = await addDomain(domainName, token);
       setAddDomainSuccess(data.message || "Domain added successfully");
       setNewDomain("");
-      localStorage.removeItem(SCANNED_DOMAINS_KEY);
-      localStorage.removeItem("lastScannedDomain");
+      clearDomainCaches();
       await refreshProfile();
     } catch (err) {
       setAddDomainError(err.message || "Failed to add domain");
@@ -253,6 +245,7 @@ function Profile() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    clearDomainCaches();
     navigate("/auth");
   };
 
@@ -388,7 +381,7 @@ function Profile() {
 
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* ═══════════════ USER CARD ═══════════════ */}
-        <section className="lg:col-span-6">
+        <section className="lg:col-span-4">
           <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <div className="flex flex-col items-center text-center">
               <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border-2 border-indigo-100 bg-slate-100 text-2xl font-bold text-indigo-700">
@@ -426,7 +419,7 @@ function Profile() {
         </section>
 
         {/* ═══════════════ TEAM MEMBERS (owner only) ═══════════════ */}
-        <section className="lg:col-span-6">
+        <section className="lg:col-span-8">
           <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-6 py-5">
               <div>

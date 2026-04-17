@@ -3,7 +3,7 @@ const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 /**
  * Generic fetch wrapper with JSON handling and error extraction.
  */
-async function request(endpoint, { method = "GET", body, token } = {}) {
+async function request(endpoint, { method = "GET", body, token, signal } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -11,6 +11,7 @@ async function request(endpoint, { method = "GET", body, token } = {}) {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    signal,
   });
 
   const data = await res.json().catch(() => null);
@@ -32,10 +33,10 @@ export function loginUser(email, password) {
   });
 }
 
-export function registerUser(email, password) {
+export function registerUser(email, password, domain) {
   return request("/auth/register", {
     method: "POST",
-    body: { email, password },
+    body: { email, password, domain },
   });
 }
 
@@ -168,5 +169,45 @@ export function getScanSummaries(token) {
 
 export function getTotalScans(token) {
   return request("/admin/scans/total", { token });
+}
+
+// ─── Malware ──────────────────────────────────────────────────────────────────
+
+export function scanMalware(domain, token, signal) {
+  return request("/malware/scan", {
+    method: "POST",
+    body: { domain },
+    token,
+    signal,
+  });
+}
+
+export function getMalwareStatus(domain, token, signal) {
+  return request(`/malware/status?domain=${encodeURIComponent(domain)}`, {
+    token,
+    signal,
+  });
+}
+
+export function getMalwareReport(domain, token, signal) {
+  return request(`/malware/report?domain=${encodeURIComponent(domain)}`, {
+    token,
+    signal,
+  });
+}
+
+export function getMalwareScanHistory(domain, token, signal) {
+  let endpoint = "/malware/history";
+  if (domain) {
+    endpoint += `?domain=${encodeURIComponent(domain)}`;
+  }
+  return request(endpoint, { token, signal });
+}
+
+export function abortMalwareScan(scanId, token) {
+  return request(`/malware/abort/${scanId}`, {
+    method: "POST",
+    token,
+  });
 }
 

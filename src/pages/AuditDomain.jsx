@@ -33,7 +33,6 @@ const RUNNING = "running";
 const COMPLETED = "completed";
 
 const STAGE_ORDER = STAGES.map((s) => s.id);
-const SCANNED_DOMAINS_KEY = "scannedDomains";
 const scanSessionListeners = new Set();
 
 let activeScanSocket = null;
@@ -143,25 +142,6 @@ function getStageLabelClasses(status) {
   }
 
   return "text-slate-400";
-}
-
-function saveScannedDomain(domain) {
-  const normalizedDomain = domain.trim();
-  if (!normalizedDomain) return;
-
-  const storedDomains = JSON.parse(
-    localStorage.getItem(SCANNED_DOMAINS_KEY) || "[]",
-  );
-  const nextDomains = [
-    normalizedDomain,
-    ...storedDomains.filter(
-      (storedDomain) =>
-        storedDomain.toLowerCase() !== normalizedDomain.toLowerCase(),
-    ),
-  ];
-
-  localStorage.setItem(SCANNED_DOMAINS_KEY, JSON.stringify(nextDomains));
-  localStorage.setItem("lastScannedDomain", normalizedDomain);
 }
 
 function StageCard({ stage, status }) {
@@ -288,7 +268,6 @@ function NewScan() {
           }));
           ws.close();
           activeScanSocket = null;
-          saveScannedDomain(scanDomain);
           resetScanSession();
           return;
         }

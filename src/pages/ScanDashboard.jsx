@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { getScore, getIpReputation, getProfile } from "../services/api";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import isecurifyLogo from "../assets/isecurify_logo.png";
 
 // ─── Category icon mapping ───────────────────────────────────────────────────
 
@@ -101,8 +104,6 @@ const CLEAN_CONFIG = {
   tabInactive: "bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50",
 };
 
-const SCANNED_DOMAINS_KEY = "scannedDomains";
-
 function getSeverityConfig(severity) {
   return SEVERITY_CONFIG[(severity || "info").toLowerCase()] || SEVERITY_CONFIG.info;
 }
@@ -120,15 +121,6 @@ function normalizeProfileDomains(domainValue) {
   return normalizedDomain ? [normalizedDomain] : [];
 }
 
-function readStoredDomains() {
-  try {
-    const domains = JSON.parse(localStorage.getItem(SCANNED_DOMAINS_KEY) || "[]");
-    return Array.isArray(domains) ? domains.map(normalizeDomain).filter(Boolean) : [];
-  } catch {
-    return [];
-  }
-}
-
 function dedupeDomains(domains) {
   const seen = new Set();
 
@@ -141,13 +133,12 @@ function dedupeDomains(domains) {
   });
 }
 
-function rememberDomain(domain) {
-  const normalizedDomain = normalizeDomain(domain);
-  if (!normalizedDomain) return;
-
-  const nextDomains = dedupeDomains([normalizedDomain, ...readStoredDomains()]);
-  localStorage.setItem(SCANNED_DOMAINS_KEY, JSON.stringify(nextDomains));
-  localStorage.setItem("lastScannedDomain", normalizedDomain);
+function domainIsAssigned(domain, assignedDomains) {
+  const normalizedDomain = normalizeDomain(domain).toLowerCase();
+  if (!normalizedDomain) return false;
+  return assignedDomains.some(
+    (assignedDomain) => normalizeDomain(assignedDomain).toLowerCase() === normalizedDomain,
+  );
 }
 
 // ─── IP Reputation helpers ────────────────────────────────────────────────────
@@ -449,21 +440,17 @@ function ScanDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeCatName, setActiveCatName] = useState(null);
-  const [knownDomains, setKnownDomains] = useState(() =>
-    dedupeDomains([
-      searchParams.get("domain"),
-      localStorage.getItem("lastScannedDomain"),
-      ...readStoredDomains(),
-    ]),
-  );
+  const [knownDomains, setKnownDomains] = useState([]);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
-  const domain = normalizeDomain(
-    searchParams.get("domain") || localStorage.getItem("lastScannedDomain") || knownDomains[0] || "",
-  );
+  const domain = normalizeDomain(searchParams.get("domain") || knownDomains[0] || "");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      setProfileLoaded(true);
+      return;
+    }
 
     let cancelled = false;
 
@@ -471,22 +458,29 @@ function ScanDashboard() {
       .then((profile) => {
         if (cancelled) return;
 
-        const profileDomains = normalizeProfileDomains(profile?.domain);
-        if (profileDomains.length === 0) return;
+        const profileDomains = dedupeDomains(normalizeProfileDomains(profile?.domain));
+        setKnownDomains(profileDomains);
 
-        setKnownDomains((current) =>
-          dedupeDomains([...current, ...profileDomains, ...readStoredDomains()]),
-        );
+        const requestedDomain = normalizeDomain(searchParams.get("domain") || "");
+        if (!requestedDomain && profileDomains[0]) {
+          setSearchParams({ domain: profileDomains[0] }, { replace: true });
+        }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setProfileLoaded(true);
+      });
 
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch scan score
   useEffect(() => {
+    if (!profileLoaded) return;
+
     setLoading(true);
     setError(null);
     setData(null);
@@ -496,12 +490,19 @@ function ScanDashboard() {
 
     if (!domain) {
       setLoading(false);
-      setError("No domain specified. Run a scan first.");
+      setError(
+        knownDomains.length === 0
+          ? "No domains are assigned to your organization."
+          : "No domain specified. Select a domain to view its scan.",
+      );
       return;
     }
 
-    rememberDomain(domain);
-    setKnownDomains((current) => dedupeDomains([...current, domain, ...readStoredDomains()]));
+    if (knownDomains.length > 0 && !domainIsAssigned(domain, knownDomains)) {
+      setLoading(false);
+      setError("This domain is not assigned to your organization.");
+      return;
+    }
 
     const token = localStorage.getItem("token");
     if (!token) { setLoading(false); setError("Not authenticated."); return; }
@@ -510,7 +511,7 @@ function ScanDashboard() {
       .then((result) => { setData(result); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [domain]);
+  }, [domain, profileLoaded, knownDomains]);
 
   // Fetch IP reputation for all IPs once data arrives
   useEffect(() => {
@@ -655,8 +656,151 @@ function ScanDashboard() {
     ? worstIpSev === null ? CLEAN_CONFIG : getSeverityConfig(worstIpSev)
     : getSeverityConfig(activeCat?.severity || "info");
 
+  const handleDownloadReport = async () => {
+    if (!data) return;
+
+    const doc = new jsPDF();
+    
+    let currentY = 15;
+    
+    try {
+      const img = new Image();
+      img.src = isecurifyLogo;
+      await new Promise((resolve) => {
+        if (img.complete) {
+          resolve();
+        } else {
+          img.onload = resolve;
+          img.onerror = resolve;
+        }
+      });
+      if (img.width > 0) {
+        const targetWidth = 40;
+        const targetHeight = (img.height / img.width) * targetWidth;
+        doc.addImage(img, "PNG", 14, currentY, targetWidth, targetHeight);
+        currentY += targetHeight + 10;
+      }
+    } catch (e) {
+      console.error("Error loading logo:", e);
+    }
+
+    doc.setFontSize(22);
+    doc.setTextColor(40);
+    doc.text("Security Scan Report", 14, currentY);
+    currentY += 10;
+    
+    doc.setFontSize(12);
+    doc.text(`Domain: ${data.host?.domain || domain}`, 14, currentY);
+    doc.text(`Score: ${data.domain_score} / 100 (${grade.label})`, 14, currentY + 7);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, currentY + 14);
+    
+    currentY += 25;
+
+    const summaryData = [];
+    const expectedCats = [
+      "Application Security",
+      "Network Security",
+      "TLS Security",
+      "DNS Security",
+      "IP Reputation"
+    ];
+    
+    expectedCats.forEach(catName => {
+      const cat = allCategories.find(c => c.name === catName);
+      let countText = "0 findings";
+      if (cat) {
+        if (cat.isIpRep) {
+          countText = `${cat.findings.length} IPs`;
+        } else {
+          const count = cat.findings.reduce((s, f) => s + f.hosts.length, 0);
+          countText = `${count} finding${count !== 1 ? "s" : ""}`;
+        }
+      } else if (catName === "IP Reputation") {
+        countText = "0 IPs";
+      }
+      summaryData.push([catName, countText]);
+    });
+
+    doc.setFontSize(18);
+    doc.text("Executive Summary", 14, currentY);
+    currentY += 5;
+    
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Category', 'Summary']],
+      body: summaryData,
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229] }
+    });
+    currentY = doc.lastAutoTable.finalY + 15;
+
+    allCategories.forEach(cat => {
+      // Create a page break if needed
+      if (currentY > doc.internal.pageSize.getHeight() - 30) {
+         doc.addPage();
+         currentY = 20;
+      }
+
+      doc.setFontSize(16);
+      doc.text(cat.name, 14, currentY);
+      currentY += 5;
+
+      if (cat.isIpRep) {
+        if (ipReps.length === 0) {
+          doc.setFontSize(12);
+          doc.text("No IPs found.", 14, currentY);
+          currentY += 10;
+        } else {
+          const ipTableData = ipReps.map(r => [
+            r.ip,
+            r.abuseConfidenceScore + "%",
+            r.totalReports.toString(),
+            r.isp || "N/A"
+          ]);
+          autoTable(doc, {
+            startY: currentY,
+            head: [['IP', 'Abuse Score', 'Total Reports', 'ISP']],
+            body: ipTableData,
+            theme: 'grid',
+            headStyles: { fillColor: [79, 70, 229] }
+          });
+          currentY = doc.lastAutoTable.finalY + 15;
+        }
+      } else {
+        if (cat.findings.length === 0) {
+          doc.setFontSize(12);
+          doc.text("No findings.", 14, currentY);
+          currentY += 10;
+        } else {
+          const vTableData = [];
+           cat.findings.forEach(f => {
+            f.hosts.forEach(host => {
+              vTableData.push([
+                 f.rule,
+                 host.subdomain || "—",
+                 host.ip || "—",
+                 host.port?.toString() || "—",
+                 f.severity.toUpperCase()
+              ]);
+            });
+          });
+          autoTable(doc, {
+            startY: currentY,
+            head: [['Finding Rule', 'Affected Host', 'IP', 'Port', 'Severity']],
+            body: vTableData,
+            theme: 'grid',
+            headStyles: { fillColor: [79, 70, 229] }
+          });
+          currentY = doc.lastAutoTable.finalY + 15;
+        }
+      }
+    });
+
+    doc.save(`${domain}-scan-report.pdf`);
+  };
+
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-surface relative">
       <main className="flex-1 overflow-y-auto pt-8 pb-16 px-12 max-w-[1600px] mx-auto w-full">
 
         {/* ── Domain nav ── */}
@@ -679,7 +823,18 @@ function ScanDashboard() {
         )}
 
         {/* ── Top section ── */}
-        <section className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-10">
+        <section className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-10 relative">
+          
+          <div className="absolute top-0 right-0 z-10 hidden md:block">
+            <button
+              onClick={handleDownloadReport}
+              title="Download Report"
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm shadow-sm hover:bg-indigo-700 transition"
+            >
+              <span className="material-symbols-outlined text-sm">download</span>
+              Download Report
+            </button>
+          </div>
 
           {/* Score card */}
           <div className="md:col-span-5 lg:col-span-4 bg-surface-container-lowest p-8 rounded-xl shadow-sm relative overflow-hidden group border border-slate-200">
@@ -770,7 +925,7 @@ function ScanDashboard() {
                 <button className="px-4 py-2 bg-surface-container-low text-on-surface font-semibold text-sm rounded-lg flex items-center gap-2 hover:bg-surface-container-high transition-all">
                   <span className="material-symbols-outlined text-sm">filter_list</span> Filter
                 </button>
-                <button className="px-4 py-2 bg-surface-container-low text-on-surface font-semibold text-sm rounded-lg flex items-center gap-2 hover:bg-surface-container-high transition-all">
+                <button onClick={handleDownloadReport} className="px-4 py-2 bg-surface-container-low text-on-surface font-semibold text-sm rounded-lg flex items-center gap-2 hover:bg-surface-container-high transition-all">
                   <span className="material-symbols-outlined text-sm">download</span> Export
                 </button>
               </div>
