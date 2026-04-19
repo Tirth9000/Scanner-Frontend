@@ -32,3 +32,7 @@
         transform: translateX(320%);
     }
 }
+
+.grecaptcha-badge {
+    visibility: hidden !important;
+}

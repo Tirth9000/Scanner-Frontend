@@ -6,11 +6,31 @@ import ResetPasswordModal from "./ResetPasswordModal";
 function Sidebar({ isOpen, onToggle }) {
   const location = useLocation();
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState(0);
 
   // Keep the completion flag in-memory so it resets on full page reload.
   const [malwareScanComplete, setMalwareScanComplete] = useState(() =>
     Boolean(window.__malwareScanCompleted),
   );
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      try {
+        const { getProfile } = await import("../services/api");
+        const profile = await getProfile(token);
+        const domains = profile?.domain ? (Array.isArray(profile.domain) ? profile.domain : [profile.domain]) : [];
+        const uniqueDomains = new Set(domains.map(d => d.trim().toLowerCase()).filter(Boolean));
+        const slots = Math.max(0, (profile?.max_domains || 0) - uniqueDomains.size);
+        setAvailableSlots(slots);
+      } catch (err) {}
+    };
+
+    fetchProfile();
+    window.addEventListener("profile-updated", fetchProfile);
+    return () => window.removeEventListener("profile-updated", fetchProfile);
+  }, []);
 
   useEffect(() => {
     const onComplete = () => setMalwareScanComplete(true);
@@ -60,7 +80,7 @@ function Sidebar({ isOpen, onToggle }) {
         }`}
       >
         {/* Logo */}
-        <div className="mb-10">
+        <div className="mb-10 flex items-center justify-between">
           <div className="text-2xl font-bold text-indigo-900 font-headline">
             <img
               src={logo}
@@ -116,7 +136,14 @@ function Sidebar({ isOpen, onToggle }) {
               }
             />
             <span className="material-symbols-outlined">radar</span>
-            <span>Audit Domain</span>
+            <div className="flex flex-1 items-center justify-between">
+              <span>Audit Domain</span>
+              {availableSlots > 0 && (
+                <div className="flex h-5 items-center justify-center rounded-full bg-rose-100 px-2 text-[10px] font-black text-rose-700 shadow-sm animate-pulse">
+                  +{availableSlots}
+                </div>
+              )}
+            </div>
           </Link>
 
           {/* Dashboard link moved to top of the menu */}
@@ -136,7 +163,14 @@ function Sidebar({ isOpen, onToggle }) {
               }
             />
             <span className="material-symbols-outlined">bug_report</span>
-            <span>Malware Scan</span>
+            <div className="flex flex-1 items-center justify-between">
+              <span>Malware Scan</span>
+              {availableSlots > 0 && (
+                <div className="flex h-5 items-center justify-center rounded-full bg-rose-100 px-2 text-[10px] font-black text-rose-700 shadow-sm animate-pulse">
+                  +{availableSlots}
+                </div>
+              )}
+            </div>
           </Link>
 
 

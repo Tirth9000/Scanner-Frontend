@@ -179,20 +179,18 @@ function Assessment() {
             )}`}
           >
             <div
-              className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${
-                activeCategoryId === metric.id
+              className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${activeCategoryId === metric.id
                   ? "bg-white/15 text-white ring-4 ring-white/10"
                   : "bg-indigo-50 text-indigo-600"
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-2xl">
                 {metric.icon}
               </span>
             </div>
             <h3
-              className={`mb-2 text-sm font-bold uppercase tracking-wider ${
-                activeCategoryId === metric.id ? "text-white" : "text-slate-700"
-              }`}
+              className={`mb-2 text-sm font-bold uppercase tracking-wider ${activeCategoryId === metric.id ? "text-white" : "text-slate-700"
+                }`}
             >
               {metric.label}
             </h3>
@@ -202,11 +200,10 @@ function Assessment() {
             </div>
 
             <span
-              className={`inline-flex rounded-full border px-4 py-1.5 text-xs font-black uppercase ${
-                activeCategoryId === metric.id
+              className={`inline-flex rounded-full border px-4 py-1.5 text-xs font-black uppercase ${activeCategoryId === metric.id
                   ? "border-white/25 bg-white/10 text-white"
                   : getMetricStatusClasses(metric.value)
-              }`}
+                }`}
             >
               {getMetricStatus(metric.value)}
             </span>
@@ -263,18 +260,16 @@ function Assessment() {
                   key={item.id}
                   type="button"
                   onClick={() => toggleItem(activeCategory.id, item.id)}
-                  className={`flex w-full items-start gap-4 rounded-2xl border p-4 text-left transition-all ${
-                    checked
+                  className={`flex w-full items-start gap-4 rounded-2xl border p-4 text-left transition-all ${checked
                       ? "border-emerald-200 bg-emerald-50"
                       : "border-slate-200 bg-slate-50 hover:border-indigo-200 hover:bg-indigo-50/40"
-                  }`}
+                    }`}
                 >
                   <div
-                    className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                      checked
+                    className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${checked
                         ? "bg-emerald-500 text-white"
                         : "bg-slate-200 text-slate-500"
-                    }`}
+                      }`}
                   >
                     <span className="material-symbols-outlined text-[22px]">
                       {checked ? "check" : "radio_button_unchecked"}
@@ -293,11 +288,10 @@ function Assessment() {
                       </div>
 
                       <span
-                        className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-widest ${
-                          checked
+                        className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-widest ${checked
                             ? "bg-emerald-100 text-emerald-700"
                             : "bg-slate-200 text-slate-500"
-                        }`}
+                          }`}
                       >
                         {checked ? "True" : "False"}
                       </span>

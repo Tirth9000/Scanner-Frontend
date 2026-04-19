@@ -7,7 +7,6 @@ import {
   inviteMember,
   getScore,
   redeemPromo,
-  addDomain,
 } from "../services/api";
 
 function normalizeDomain(domain) {
@@ -67,11 +66,6 @@ function Profile() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState("");
   const [promoSuccess, setPromoSuccess] = useState("");
-  const [showAddDomainForm, setShowAddDomainForm] = useState(false);
-  const [newDomain, setNewDomain] = useState("");
-  const [addDomainLoading, setAddDomainLoading] = useState(false);
-  const [addDomainError, setAddDomainError] = useState("");
-  const [addDomainSuccess, setAddDomainSuccess] = useState("");
 
   // ─── Fetch profile on mount ────────────────────────────────────────────────
   useEffect(() => {
@@ -194,8 +188,6 @@ function Profile() {
     e.preventDefault();
     setPromoError("");
     setPromoSuccess("");
-    setAddDomainError("");
-    setAddDomainSuccess("");
 
     const code = promoCode.trim();
     if (!code) {
@@ -208,8 +200,8 @@ function Profile() {
       const data = await redeemPromo(code, token);
       setPromoSuccess(data.message || "Promo redeemed successfully");
       setPromoCode("");
-      setShowAddDomainForm(true);
       await refreshProfile();
+      window.dispatchEvent(new Event("profile-updated"));
     } catch (err) {
       setPromoError(err.message || "Failed to redeem promo code");
     } finally {
@@ -217,30 +209,7 @@ function Profile() {
     }
   };
 
-  const handleAddDomain = async (e) => {
-    e.preventDefault();
-    setAddDomainError("");
-    setAddDomainSuccess("");
 
-    const domainName = newDomain.trim().toLowerCase();
-    if (!domainName) {
-      setAddDomainError("Please enter a domain");
-      return;
-    }
-
-    setAddDomainLoading(true);
-    try {
-      const data = await addDomain(domainName, token);
-      setAddDomainSuccess(data.message || "Domain added successfully");
-      setNewDomain("");
-      clearDomainCaches();
-      await refreshProfile();
-    } catch (err) {
-      setAddDomainError(err.message || "Failed to add domain");
-    } finally {
-      setAddDomainLoading(false);
-    }
-  };
   // ─── Logout handler ────────────────────────────────────────────────────────
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -344,34 +313,7 @@ function Profile() {
       )}
 
 
-      {showAddDomainForm && (
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <form onSubmit={handleAddDomain} className="space-y-3">
-            <label className="block text-xs font-bold uppercase tracking-[0.22em] text-slate-600">
-              Additional Domain
-            </label>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <input
-                type="text"
-                value={newDomain}
-                onChange={(e) => setNewDomain(e.target.value)}
-                placeholder="example.com"
-                className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-              />
-              <button
-                type="submit"
-                disabled={addDomainLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-60"
-              >
-                {addDomainLoading && <Loader2 size={16} className="animate-spin" />}
-                Add Domain
-              </button>
-            </div>
-            {addDomainError && <p className="text-sm text-red-600">{addDomainError}</p>}
-            {addDomainSuccess && <p className="text-sm text-emerald-600">{addDomainSuccess}</p>}
-          </form>
-        </div>
-      )}
+
       {/* ─── Success / Error banners (for invite) ─── */}
       {inviteSuccess && (
         <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">

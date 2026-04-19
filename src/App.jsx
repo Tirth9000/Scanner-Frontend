@@ -10,6 +10,7 @@ import Scan from "./pages/AuditDomain";
 import MalwareScan from "./pages/MalwareScan";
 import ScanDashboard from "./pages/ScanDashboard";
 import ScanDetails from "./pages/ScanDetails";
+import ScanHistory from "./pages/ScanHistory";
 import AdminUsers from "./pages/AdminUsers";
 import AdminSubscription from "./pages/AdminSubscription";
 import Assessment from "./pages/Assessment";
@@ -32,6 +33,7 @@ function App() {
         <Route path="scan-dashboard" element={<ScanDashboard />} />
         <Route path="scan-details" element={<ScanDetails />} />
         <Route path="scan" element={<Scan />} />
+        <Route path="history" element={<ScanHistory />} />
         <Route path="malware" element={<MalwareScan />} />
         <Route path="malware-history" element={<MalwareScanHistory />} />
         <Route path="malware-dashboard" element={<MalwareDashboard />} />

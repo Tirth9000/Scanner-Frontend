@@ -1,8 +1,5 @@
 const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
-/**
- * Generic fetch wrapper with JSON handling and error extraction.
- */
 async function request(endpoint, { method = "GET", body, token, signal } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -26,17 +23,26 @@ async function request(endpoint, { method = "GET", body, token, signal } = {}) {
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
-export function loginUser(email, password) {
+export function loginUser(email, password, captcha_token) {
   return request("/auth/login", {
     method: "POST",
-    body: { email, password },
+    body: { 
+      email, 
+      password, 
+      ...(captcha_token ? { captcha_token } : {}) 
+    },
   });
 }
 
-export function registerUser(email, password, domain) {
+export function registerUser(email, password, domain, captcha_token) {
   return request("/auth/register", {
     method: "POST",
-    body: { email, password, domain },
+    body: { 
+      email, 
+      password, 
+      domain, 
+      ...(captcha_token ? { captcha_token } : {}) 
+    },
   });
 }
 
@@ -61,7 +67,7 @@ export function resetPasswordWithOtp(email, otp, new_password) {
 export function resetPassword(old_password, new_password, token) {
   return request("/auth/reset-password", {
     method: "POST",
-    body: { old_password, new_password },
+    body: { old_password , new_password },
     token,
   });
 }
@@ -111,6 +117,10 @@ export function getScore(domain, token) {
   return request(`/score/get_score?domain=${encodeURIComponent(domain)}`, {
     token,
   });
+}
+
+export function getScanHistory(token) {
+  return request("/score/history", { token });
 }
 
 export function getIpReputation(ip, token) {
@@ -210,4 +220,3 @@ export function abortMalwareScan(scanId, token) {
     token,
   });
 }
-

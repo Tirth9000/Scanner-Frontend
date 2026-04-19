@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { loginUser, registerUser, forgotPassword, resetPasswordWithOtp } from "../services/api";
 // @ts-ignore
 import isecurify_logo from "../assets/isecurify_logo.png";
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   // "login" | "signup" | "forgot" | "reset-otp"
   const [view, setView] = useState("login");
@@ -55,7 +57,19 @@ function AuthPage() {
 
     setLoading(true);
     try {
-      const data = await loginUser(email, password);
+      const captchaEnabled = import.meta.env.VITE_RECAPTCHA_ENABLED === 'true';
+      let captchaToken = undefined;
+
+      if (captchaEnabled) {
+        if (!executeRecaptcha) {
+          setError("reCAPTCHA not initialized. Please try again later.");
+          setLoading(false);
+          return;
+        }
+        captchaToken = await executeRecaptcha("login");
+      }
+
+      const data = await loginUser(email, password, captchaToken);
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       
@@ -92,7 +106,19 @@ function AuthPage() {
 
     setLoading(true);
     try {
-      const data = await registerUser(email, password, domain.trim());
+      const captchaEnabled = import.meta.env.VITE_RECAPTCHA_ENABLED === 'true';
+      let captchaToken = undefined;
+
+      if (captchaEnabled) {
+        if (!executeRecaptcha) {
+          setError("reCAPTCHA not initialized. Please try again later.");
+          setLoading(false);
+          return;
+        }
+        captchaToken = await executeRecaptcha("register");
+      }
+
+      const data = await registerUser(email, password, domain.trim(), captchaToken);
       setSuccess(data.message || "Registration successful! Please log in.");
       setTimeout(() => {
         setPassword("");
@@ -280,6 +306,11 @@ function AuthPage() {
                   {loading && <Loader2 size={18} className="animate-spin" />}
                   {loading ? "Signing In…" : "Sign In"}
                 </button>
+                <p style={{ fontSize: "12px", color: "#888" }}>
+                  This site is protected by reCAPTCHA and the Google{" "}
+                  <a href="https://policies.google.com/privacy">Privacy Policy</a> and{" "}
+                  <a href="https://policies.google.com/terms">Terms of Service</a> apply.
+                </p>
               </form>
             )}
 
@@ -363,6 +394,11 @@ function AuthPage() {
                   {loading && <Loader2 size={18} className="animate-spin" />}
                   {loading ? "Creating Account…" : "Create Account"}
                 </button>
+                <p style={{ fontSize: "12px", color: "#888" }}>
+                  This site is protected by reCAPTCHA and the Google{" "}
+                  <a href="https://policies.google.com/privacy">Privacy Policy</a> and{" "}
+                  <a href="https://policies.google.com/terms">Terms of Service</a> apply.
+                </p>
               </form>
             )}
 
